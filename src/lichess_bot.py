@@ -1,6 +1,8 @@
+import discord
+import re
 from discord.ext import commands
 import requests  # need to also pip install "requests[security]"
-from rating import *
+from rating import all_ratings, gamemode_rating
 
 TOKEN = open('/etc/lichessbottoken.txt').read()
 PREFIX = '!'  # command prefix
