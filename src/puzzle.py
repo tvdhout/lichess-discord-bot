@@ -1,17 +1,21 @@
 import base64
 # selenium requires installation of https://github.com/mozilla/geckodriver/releases and add path/to/executable to $PATH
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from PIL import Image
 from io import BytesIO
 import time
 
-fox = webdriver.Firefox()
-fox.get('https://lichess.org/training/68030')
-# # now that we have the preliminary stuff out of the way time to get that image :D
-element = fox.find_element_by_class_name('main-board')  # find part of the page you want image of
+
+options = Options()
+options.headless = True
+fox = webdriver.Chrome(options=options)
+fox.get('https://lichess.org/training/')
+
+element = fox.find_element_by_class_name('main-board')
 location = element.location
 size = element.size
-
+time.sleep(.8)
 img = Image.open(BytesIO(base64.b64decode(fox.get_screenshot_as_base64())))
 
 pixel_ratio = fox.execute_script("return window.devicePixelRatio")
