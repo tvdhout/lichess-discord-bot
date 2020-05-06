@@ -22,7 +22,7 @@ async def all_ratings(message: discord.message.Message, response: requests.Respo
         await message.channel.send("I can't find any ratings for this user!")
         return
 
-    embed = discord.Embed(title=f"{name}'s ratings",
+    embed = discord.Embed(title=f"{name}'s {'average' if avg_only else ''} rating{'' if avg_only else 's'}",
                           url=f'https://lichess.org/@/{name}',
                           colour=0x00ffff
                           )
