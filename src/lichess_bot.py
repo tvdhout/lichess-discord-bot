@@ -3,7 +3,7 @@ import requests  # need to also pip install "requests[security]"
 from rating import *
 
 TOKEN = open('/etc/lichessbottoken.txt').read()
-client = commands.Bot(command_prefix='l!')
+client = commands.Bot(command_prefix='!')
 
 
 @client.event
@@ -12,20 +12,11 @@ async def on_ready():
 
 
 @client.command()
-async def help():
-    """
-    Show bot help (commands, etc)
-    :return:
-    """
-    pass  # TODO: help command
-
-
-@client.command()
 async def commands():
     """
-    Alias for help
+    Show commands
     """
-    await help()
+    pass
 
 
 @client.command(pass_context=True)
