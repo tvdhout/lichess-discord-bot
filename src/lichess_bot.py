@@ -1,8 +1,14 @@
+"""
+Invite the bot to your server with the following URL
+https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permissions=52224&scope=bot
+"""
 import discord
 import re
 from discord.ext import commands
 import requests  # need to also pip install "requests[security]"
 from rating import all_ratings, gamemode_rating
+from puzzle import show_puzzle
+
 
 TOKEN = open('/etc/lichessbottoken.txt').read()
 PREFIX = '!'  # command prefix
@@ -45,8 +51,7 @@ async def rating(context):
 
     contents = message.content.split()
     if len(contents) == 1:  # !rating
-        await message.channel.send(f"'rating' usage:"
-                                   f"\n{PREFIX}rating [username] --> show all ratings and average rating"
+        await message.channel.send(f"\n{PREFIX}rating [username] --> show all ratings and average rating"
                                    f"\n{PREFIX}rating [username] [gamemode] --> show rating for a particular gamemode")
         return
 
@@ -74,6 +79,19 @@ async def rating(context):
     elif len(contents) == 3:  # !rating [name/url] [gamemode]
         gamemode = contents[2]
         await gamemode_rating(message, response, name, gamemode)
+
+
+@client.command(pass_context=True)
+async def puzzle(context):
+    message = context.message
+    if message.author == client.user:
+        return
+
+    contents = message.content.split()
+    if len(contents) == 1:  # !puzzle
+        await show_puzzle(message)
+    else:  # !puzzle [id]
+        await show_puzzle(message, contents[1])
 
 
 if __name__ == '__main__':

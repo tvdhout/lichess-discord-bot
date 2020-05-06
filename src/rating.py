@@ -5,7 +5,7 @@ import numpy as np
 import re
 
 
-async def all_ratings(message: discord.Message, response: requests.Response, name: str) -> None:
+async def all_ratings(message: discord.message.Message, response: requests.Response, name: str) -> None:
     """
     Show the ratings for each gamemode and the average rating over ['Bullet', 'Blitz', 'Rapid', 'Classical']
     :param message: user's message to reply to
@@ -53,7 +53,7 @@ async def all_ratings(message: discord.Message, response: requests.Response, nam
     await message.channel.send(embed=embed)
 
 
-async def gamemode_rating(message: discord.Message, response: requests.Response, name: str, gamemode: str) -> None:
+async def gamemode_rating(message: discord.message.Message, response: requests.Response, name: str, gamemode: str) -> None:
     """
     Show the rating of a given user in a particular gamemode
     :param message: user's message to reply to
