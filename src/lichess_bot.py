@@ -28,9 +28,12 @@ async def commands(context):
     Show list of commands
     """
     embed = discord.Embed(title=f"Commands", colour=0x00ffff)
-    embed.add_field(name=f"Rating", value=f"\n{PREFIX}rating [username] --> show all ratings and average rating"
+    embed.add_field(name=f"Rating", value=f"{PREFIX}rating [username] --> show all ratings and average rating"
                                           f"\n{PREFIX}rating [username] [gamemode] --> show rating for a "
                                           f"particular gamemode", inline=False)
+    embed.add_field(name=f"Puzzle", value=f"{PREFIX}puzzle --> get a random lichess puzzle to solve!"
+                                          f"\n{PREFIX}puzzle [puzzle_id] --> show a particular lichess puzzle",
+                    inline=False)
 
     await context.message.channel.send(embed=embed)
 
@@ -41,6 +44,17 @@ async def help(context):
     Alias for commands
     """
     await commands(context)
+
+
+@client.command(pass_context=True)
+async def about(context):
+    """
+    Information about this bit
+    """
+    await context.message.channel.send(f"I am a bot created by @stockvis and I can obtain various lichess-related "
+                                       f"pieces of information for you. You can see how I work here: "
+                                       f"https://github.com/tvdhout/Lichess-discord-bot. Check out what I can do using"
+                                       f"{PREFIX}help.")
 
 
 @client.command(pass_context=True)
