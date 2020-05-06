@@ -8,7 +8,7 @@ Type=simple
 Restart=always
 RestartSec=1
 User=thijs
-ExecStart=/usr/bin/python3 /home/thijs/Lichess-discord-bot/src/lichess_bot.py
+ExecStart=/usr/bin/python3 /home/thijs/Lichess-discord-bot/src/lichess_bot.py >> /var/log/lichessbot.log
 
 [Install]
 WantedBy=multi-user.target
