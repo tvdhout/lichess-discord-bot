@@ -62,9 +62,11 @@ async def gamemode_rating(message, response, name, gamemode: str):
     :return: send the embedded message, return nothing
     """
     soup = BeautifulSoup(response.text, 'html.parser')
-    h3 = soup.find('h3', text=re.compile(rf'^{gamemode}$', re.I))
-    if not h3:
-        message.channel.send(f"I can't find {name}'s {gamemode} rating")
+    h3 = soup.find('h3', text=re.compile(rf'^{gamemode}s?$', re.I))
+    print(h3)
+    if h3 is None:
+        await message.channel.send(f"I can't find {name}'s {gamemode} rating")
+        return
     rating = h3.parent.find('rating').find('strong').string
     n_games = h3.parent.find('rating').find('span').string
 
