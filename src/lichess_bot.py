@@ -3,7 +3,10 @@ import requests  # need to also pip install "requests[security]"
 from rating import *
 
 TOKEN = open('/etc/lichessbottoken.txt').read()
-client = commands.Bot(command_prefix='!')
+PREFIX = '!'  # command prefix
+
+client = commands.Bot(command_prefix=PREFIX)
+client.remove_command('help')
 
 
 @client.event
@@ -11,12 +14,25 @@ async def on_ready():
     print('Logged in as {0.user}'.format(client))
 
 
-@client.command()
-async def commands():
+@client.command(pass_context=True)
+async def commands(context):
     """
-    Show commands
+    Show list of commands
     """
-    pass
+    embed = discord.Embed(title=f"Commands", colour=0x00ffff)
+    embed.add_field(name=f"Rating", value=f"\n{PREFIX}rating [username] --> show all ratings and average rating"
+                                          f"\n{PREFIX}rating [username] [gamemode] --> show rating for a "
+                                          f"particular gamemode", inline=False)
+
+    await context.message.channel.send(embed=embed)
+
+
+@client.command(pass_context=True)
+async def help(context):
+    """
+    Alias for commands
+    """
+    await commands(context)
 
 
 @client.command(pass_context=True)
@@ -26,12 +42,18 @@ async def rating(context):
         return
 
     contents = message.content.split()
+    if len(contents) == 1:  # !rating
+        await message.channel.send(f"'rating' usage:"
+                                   f"\n{PREFIX}rating [username] --> show all ratings and average rating"
+                                   f"\n{PREFIX}rating [username] [gamemode] --> show rating for a particular gamemode")
+        return
+
     param1 = contents[1]
     match = re.match(r'(?:https://)?(?:www\.)?lichess\.org/@/([\S]+)/?', param1)
-    if match:
+    if match:  # user provided a link to their lichess page
         url = match.string
         name = match.groups()[0]
-    else:
+    else:  # user provided their username
         url = f'https://lichess.org/@/{param1}'
         name = param1
 
