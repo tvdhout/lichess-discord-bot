@@ -9,6 +9,8 @@ from io import BytesIO
 import time
 from typing import Optional
 
+BASE_DIR = '/home/thijs/Lichess-discord-bot'
+
 
 async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str] = '') -> None:
     # Create a headless instance of a web browser
@@ -38,9 +40,9 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
     bottom = location['y'] + size['height']
     im = img.crop((left, top, right, bottom))
 
-    im.save('../media/puzzle.png')
+    im.save(f'{BASE_DIR}/media/puzzle.png')
 
     await message.channel.send("Solve this!")
-    with open('../media/puzzle.png', 'rb') as f:
+    with open(f'{BASE_DIR}/media/puzzle.png', 'rb') as f:
         puzzle = discord.File(f)
         await message.channel.send(file=puzzle)

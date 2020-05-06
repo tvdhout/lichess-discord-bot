@@ -53,7 +53,7 @@ async def about(context):
     """
     await context.message.channel.send(f"I am a bot created by @stockvis and I can obtain various lichess-related "
                                        f"pieces of information for you. You can see how I work here: "
-                                       f"https://github.com/tvdhout/Lichess-discord-bot. Check out what I can do using"
+                                       f"https://github.com/tvdhout/Lichess-discord-bot. Check out what I can do using "
                                        f"{PREFIX}help.")
 
 
@@ -90,7 +90,7 @@ async def rating(context):
 
     if len(contents) == 2:  # !rating [name/url]
         await all_ratings(message, response, name)
-    elif len(contents) == 3:  # !rating [name/url] [gamemode]
+    elif len(contents) > 2:  # !rating [name/url] [gamemode]
         gamemode = contents[2]
         await gamemode_rating(message, response, name, gamemode)
 

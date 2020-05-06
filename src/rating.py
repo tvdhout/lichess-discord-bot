@@ -5,12 +5,14 @@ import numpy as np
 import re
 
 
-async def all_ratings(message: discord.message.Message, response: requests.Response, name: str) -> None:
+async def all_ratings(message: discord.message.Message, response: requests.Response, name: str,
+                      avg_only: bool = False) -> None:
     """
     Show the ratings for each gamemode and the average rating over ['Bullet', 'Blitz', 'Rapid', 'Classical']
     :param message: user's message to reply to
     :param response: HTTP response from the GET request to lichess
     :param name: lichess username for which to check the rating
+    :param avg_only: Only show the average rating over ['Bullet', 'Blitz', 'Rapid', 'Classical']
     :return: Show the embedded ratings
     """
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -38,13 +40,15 @@ async def all_ratings(message: discord.message.Message, response: requests.Respo
             n_games = rating_tag.find('span').string
 
             if gamemode in average_gamemodes:  # count towards average
-                embed.add_field(name=gamemode, value=f'**{rating}** ({n_games})', inline=True)
+                if not avg_only:
+                    embed.add_field(name=gamemode, value=f'**{rating}** ({n_games})', inline=True)
                 if rating.endswith('?'):  # provisional rating
                     provisional = True
                     rating = rating[:-1]  # remove question mark to cast to int
                 ratings_list.append(int(rating))
             else:
-                embed.add_field(name=gamemode, value=f'{rating} ({n_games})', inline=True)
+                if not avg_only:
+                    embed.add_field(name=gamemode, value=f'{rating} ({n_games})', inline=True)
 
     average_rating = np.mean(ratings_list)
     embed.add_field(name='Average rating (Bullet, Blitz, Rapid, Classical)',
@@ -53,7 +57,8 @@ async def all_ratings(message: discord.message.Message, response: requests.Respo
     await message.channel.send(embed=embed)
 
 
-async def gamemode_rating(message: discord.message.Message, response: requests.Response, name: str, gamemode: str) -> None:
+async def gamemode_rating(message: discord.message.Message, response: requests.Response, name: str,
+                          gamemode: str) -> None:
     """
     Show the rating of a given user in a particular gamemode
     :param message: user's message to reply to
@@ -62,12 +67,17 @@ async def gamemode_rating(message: discord.message.Message, response: requests.R
     :param gamemode: which rating to check
     :return: send the embedded message, return nothing
     """
+    if gamemode.lower() == 'average':
+        await all_ratings(message, response, name, avg_only=True)
+        return
+
     soup = BeautifulSoup(response.text, 'html.parser')
     h3 = soup.find('h3', text=re.compile(rf'^{gamemode}s?$', re.I))
-    print(h3)
+
     if h3 is None:
         await message.channel.send(f"I can't find {name}'s {gamemode} rating")
         return
+
     rating = h3.parent.find('rating').find('strong').string
     n_games = h3.parent.find('rating').find('span').string
 
