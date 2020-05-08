@@ -29,6 +29,7 @@ async def commands(context):
     !commands
     """
     embed = discord.Embed(title=f"Commands", colour=0x00ffff)
+    embed.add_field(name=f"About", value=f"{PREFIX}about --> Show information about this bot", inline=False)
     embed.add_field(name=f"Rating", value=f"{PREFIX}rating [username] --> show all ratings and average rating"
                                           f"\n{PREFIX}rating [username] [gamemode] --> show rating for a "
                                           f"particular gamemode", inline=False)
