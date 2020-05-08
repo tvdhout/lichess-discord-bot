@@ -7,11 +7,11 @@ import re
 from discord.ext import commands
 import requests  # need to also pip install "requests[security]"
 from rating import all_ratings, gamemode_rating
-from puzzle import show_puzzle
+from puzzle import show_puzzle, answer_puzzle, give_best_move
+from config import PREFIX
 
 
 TOKEN = open('/etc/lichessbottoken.txt').read()
-PREFIX = '!'  # command prefix
 
 client = commands.Bot(command_prefix=PREFIX)
 client.remove_command('help')
@@ -106,6 +106,25 @@ async def puzzle(context):
         await show_puzzle(message)
     else:  # !puzzle [id]
         await show_puzzle(message, contents[1])
+
+
+@client.command(pass_context=True)
+async def answer(context):
+    message = context.message
+    if message.author == client.user:
+        return
+
+    contents = message.content.split()
+    if len(contents) == 1:
+        await context.message.channel.send(f"Give an answer to the most recent puzzle using {PREFIX}answer [move]\n"
+                                           "Use the common algebraic notation like Qxb7, R1a5, d4, etc.")
+    else:
+        await answer_puzzle(message, contents[1])
+
+
+@client.command(pass_context=True)
+async def bestmove(context):
+    await give_best_move(context.message)
 
 
 if __name__ == '__main__':
