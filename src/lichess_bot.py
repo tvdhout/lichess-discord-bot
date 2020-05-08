@@ -11,7 +11,7 @@ from puzzle import show_puzzle, answer_puzzle, give_best_move
 from config import PREFIX, TOKEN
 
 client = commands.Bot(command_prefix=PREFIX)
-client.remove_command('help')
+client.remove_command('help')  # remove default help command
 
 
 @client.event
@@ -23,6 +23,10 @@ async def on_ready():
 async def commands(context):
     """
     Show list of commands
+
+    _________
+    Usage
+    !commands
     """
     embed = discord.Embed(title=f"Commands", colour=0x00ffff)
     embed.add_field(name=f"Rating", value=f"{PREFIX}rating [username] --> show all ratings and average rating"
@@ -44,6 +48,10 @@ async def commands(context):
 async def help(context):
     """
     Alias for commands
+
+    _________
+    Usage
+    !help
     """
     await commands(context)
 
@@ -51,16 +59,33 @@ async def help(context):
 @client.command(pass_context=True)
 async def about(context):
     """
-    Information about this bit
+    Show information about this bot
+
+    _________
+    Usage:
+    !about
     """
-    await context.message.channel.send(f"I am a bot created by @stockvis and I can obtain various lichess-related "
-                                       f"pieces of information for you. You can see how I work here: "
-                                       f"https://github.com/tvdhout/Lichess-discord-bot. Check out what I can do using "
-                                       f"{PREFIX}help.")
+    embed = discord.Embed(title=f"Commands", colour=0x00ffff)
+    embed.add_field(name="About me",
+                    value=f"I am a bot created by @stockvis and I can obtain various lichess-related "
+                          f"pieces of information for you. You can see how I work here: "
+                          f"https://github.com/tvdhout/Lichess-discord-bot. Check out what I can do using "
+                          f"{PREFIX}commands.")
+
+    await context.message.channel.send(embed=embed)
 
 
 @client.command(pass_context=True)
 async def rating(context):
+    """
+    Retrieve the ratings for a lichess user
+
+    _________
+    Usage:
+    !rating [username / url to lichess page] - Retrieves the rating for user in every gamemode, with an average
+    !rating [username / url] [gamemode] - Retrieves the rating for user in a particular gamemode
+    !rating [username / url] average - Retrieves the average rating over Bullet, Blitz, Rapid and Classical
+    """
     message = context.message
     if message.author == client.user:
         return
@@ -99,6 +124,14 @@ async def rating(context):
 
 @client.command(pass_context=True)
 async def puzzle(context):
+    """
+    Show a lichess puzzle for people to solve
+
+    _________
+    Usage:
+    !puzzle - Shows a random puzzle
+    !puzzle [id] - Shows a specific puzzle (https://lichess.org/training/[id])
+    """
     message = context.message
     if message.author == client.user:
         return
@@ -112,6 +145,14 @@ async def puzzle(context):
 
 @client.command(pass_context=True)
 async def answer(context):
+    """
+    User provides answers to a puzzle
+
+    _________
+    Usage:
+    !answer [move] - Provide [move] as the best move for the position in the last shown puzzle. Provide moves in the
+                     standard algebraic notation (Qxb7+, e4, Bxb2 etc). Check (+) and checkmate (#) notation is optional
+    """
     message = context.message
     if message.author == client.user:
         return
@@ -126,6 +167,14 @@ async def answer(context):
 
 @client.command(pass_context=True)
 async def bestmove(context):
+    """
+    Give the best move for the last shown puzzle.
+
+    _________
+    Usage:
+    !bestmove - Shows the best move for the position in the last shown puzzle. If the puzzle consists of multiple moves
+                the user can continue with the next move.
+    """
     await give_best_move(context.message)
 
 

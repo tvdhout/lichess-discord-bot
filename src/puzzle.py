@@ -24,6 +24,14 @@ _puzzle_id = None
 
 
 async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str] = '') -> None:
+    """
+    Show a puzzle
+
+    Parameters
+    ----------
+    message - the command entered by the user, used as a context to know which channel to post the reply to
+    puzzle_id - by default an empty string, resulting in a random puzzle. People can also enter a particular  puzzle ID
+    """
     # Create a headless instance of a web browser
     options = Options()
     options.headless = True
@@ -79,6 +87,14 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
 
 
 async def answer_puzzle(message: discord.message.Message, answer: str) -> None:
+    """
+    User can provide an answer to the last posted puzzle
+
+    Parameters
+    ----------
+    message - the command entered by the user, used as a context to know which channel to post the reply to
+    answer - the move the user provided
+    """
     embed = discord.Embed(title=f"Answering puzzle {_puzzle_id}",
                           url=f'https://lichess.org/training/{_puzzle_id}',
                           colour=0x00ffff
@@ -102,6 +118,12 @@ async def answer_puzzle(message: discord.message.Message, answer: str) -> None:
 
 
 async def give_best_move(message: discord.message.Message) -> None:
+    """
+    Give the best move for the last posted puzzle.
+    Parameters
+    ----------
+    message - the command entered by the user, used as a context to know which channel to post the reply to
+    """
     embed = discord.Embed(title=f"Answering puzzle {_puzzle_id}",
                           url=f'https://lichess.org/training/{_puzzle_id}',
                           colour=0x00ffff
