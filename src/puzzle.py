@@ -12,7 +12,9 @@ from selenium.webdriver.chrome.options import Options
 from PIL import Image
 from io import BytesIO
 import time
+import re
 from typing import Optional
+
 from config import PREFIX
 
 BASE_DIR = '/home/thijs/Lichess-discord-bot'
@@ -42,7 +44,7 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
 
         im.save(f'{BASE_DIR}/media/puzzle.png')
 
-        embed = discord.Embed(title=f"Solve this! (puzzle {puzzle_id})",
+        embed = discord.Embed(title=f"Find the best move! (puzzle {puzzle_id})",
                               url=f'https://lichess.org/training/{puzzle_id}',
                               colour=0x00ffff
                               )
@@ -85,7 +87,7 @@ async def answer_puzzle(message: discord.message.Message, answer: str) -> None:
         embed.add_field(name="Oops!",
                         value="I'm sorry. I currently don't have the answers to a puzzle. Please try another "
                               f"{PREFIX}puzzle")
-    elif answer.lower() == answers[0].lower():
+    elif re.sub(r'[#+]', '', answer.lower()) == re.sub(r'[#+]', '', answers[0].lower()):
         if len(follow_ups) == 0:
             embed.add_field(name="Correct!", value=f"Yes! The best move was {answers[0]}. You completed the puzzle!")
         else:
@@ -93,7 +95,8 @@ async def answer_puzzle(message: discord.message.Message, answer: str) -> None:
                                                    f"{follow_ups.pop(0)}, now what's the best move?")
         answers.pop(0)
     else:
-        embed.add_field(name="Wrong!", value=f"Try again using {PREFIX}answer or get the answer with {PREFIX}bestmove")
+        embed.add_field(name="Wrong!", value=f"{answer} is not the best move. Try again using {PREFIX}answer or get the "
+                                             f"answer with {PREFIX}bestmove")
 
     await message.channel.send(embed=embed)
 

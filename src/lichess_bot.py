@@ -10,7 +10,6 @@ from rating import all_ratings, gamemode_rating
 from puzzle import show_puzzle, answer_puzzle, give_best_move
 from config import PREFIX
 
-
 TOKEN = open('/etc/lichessbottoken.txt').read()
 
 client = commands.Bot(command_prefix=PREFIX)
@@ -34,6 +33,11 @@ async def commands(context):
     embed.add_field(name=f"Puzzle", value=f"{PREFIX}puzzle --> get a random lichess puzzle to solve!"
                                           f"\n{PREFIX}puzzle [puzzle_id] --> show a particular lichess puzzle",
                     inline=False)
+    embed.add_field(name="Answering puzzles",
+                    value=f'{PREFIX}answer [move] --> give your answer to the most recent puzzle. '
+                          f'Use the standard algebraic notation like Qxb7+\n'
+                          f'{PREFIX}bestmove --> get the best move to play in the previous puzzle, you can continue '
+                          f'the puzzle from the next move.')
 
     await context.message.channel.send(embed=embed)
 
