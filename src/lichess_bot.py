@@ -8,9 +8,7 @@ from discord.ext import commands
 import requests  # need to also pip install "requests[security]"
 from rating import all_ratings, gamemode_rating
 from puzzle import show_puzzle, answer_puzzle, give_best_move
-from config import PREFIX
-
-TOKEN = open('/etc/lichessbottoken.txt').read()
+from config import PREFIX, TOKEN
 
 client = commands.Bot(command_prefix=PREFIX)
 client.remove_command('help')
