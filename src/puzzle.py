@@ -15,12 +15,12 @@ import time
 import re
 from typing import Optional
 
-from config import PREFIX
+from config import PREFIX, BASE_DIR
 
-BASE_DIR = '/home/thijs/Lichess-discord-bot'
 answers = []
 follow_ups = []
 _puzzle_id = None
+puzzle_rating = None
 
 
 async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str] = '') -> None:
@@ -47,12 +47,15 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
         _puzzle_id = puzzle_id
 
         board = driver.find_element_by_class_name('puzzle__board')
+        color = driver.find_element_by_xpath('/html/body/div[1]/main/div[2]/div[3]/div[1]/div[2]/em'
+                                             ).text.split()[-1][:-1]  # black or white
+        print(color)
         time.sleep(.8)  # wait for the last move to play out
         im = Image.open(BytesIO(base64.b64decode(board.screenshot_as_base64)))  # take screenshot of page
 
         im.save(f'{BASE_DIR}/media/puzzle.png')
 
-        embed = discord.Embed(title=f"Find the best move! (puzzle {puzzle_id})",
+        embed = discord.Embed(title=f"Find the best move for {color}!\n(puzzle {puzzle_id})",
                               url=f'https://lichess.org/training/{puzzle_id}',
                               colour=0x00ffff
                               )
@@ -74,10 +77,12 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
                 moves = moves[i:]
                 break
 
-        global answers, follow_ups  # update global variables
+        global answers, follow_ups, puzzle_rating  # update global variables
         answers = [move.text.split()[0] for move in moves[::2]]  # list of user-given answers
         if len(moves) > 1:
             follow_ups = [move.text.split()[0] for move in moves[1::2]]  # list of computer follow ups
+
+        puzzle_rating = driver.find_element_by_xpath('/html/body/div[1]/main/aside/div/div[1]/div/p[1]/strong').text
 
         driver.quit()  # quit the connection
     except selenium.common.exceptions.NoSuchElementException:
@@ -99,20 +104,23 @@ async def answer_puzzle(message: discord.message.Message, answer: str) -> None:
                           url=f'https://lichess.org/training/{_puzzle_id}',
                           colour=0x00ffff
                           )
+    spoiler = '||' if answer.startswith('||') else ''
     if len(answers) == 0:
         embed.add_field(name="Oops!",
                         value="I'm sorry. I currently don't have the answers to a puzzle. Please try another "
                               f"{PREFIX}puzzle")
-    elif re.sub(r'[#+]', '', answer.lower()) == re.sub(r'[#+]', '', answers[0].lower()):
+    elif re.sub(r'[|#+]', '', answer.lower()) == re.sub(r'[#+]', '', answers[0].lower()):
         if len(follow_ups) == 0:
-            embed.add_field(name="Correct!", value=f"Yes! The best move was {answers[0]}. You completed the puzzle!")
+            embed.add_field(name="Correct!", value=f"Yes! The best move was {spoiler+answers[0]+spoiler}. "
+                                                   f"You completed the puzzle! (difficulty rating {puzzle_rating})")
         else:
-            embed.add_field(name="Correct!", value=f"Yes! The best move was {answers[0]}. The opponent responded with "
-                                                   f"{follow_ups.pop(0)}, now what's the best move?")
+            embed.add_field(name="Correct!", value=f"Yes! The best move was {spoiler+answers[0]+spoiler}. The opponent "
+                                                   f"responded with {spoiler+follow_ups.pop(0)+spoiler}, "
+                                                   f"now what's the best move?")
         answers.pop(0)
     else:
-        embed.add_field(name="Wrong!", value=f"{answer} is not the best move. Try again using {PREFIX}answer or get the "
-                                             f"answer with {PREFIX}bestmove")
+        embed.add_field(name="Wrong!", value=f"{answer} is not the best move. Try again using {PREFIX}"
+                                             f"answer or get the answer with {PREFIX}bestmove")
 
     await message.channel.send(embed=embed)
 
@@ -133,10 +141,11 @@ async def give_best_move(message: discord.message.Message) -> None:
                         value="I'm sorry. I currently don't have the answers to a puzzle. Please try another "
                               f"{PREFIX}puzzle")
     elif len(follow_ups) > 0:
-        embed.add_field(name="Answer", value=f"The best move is {answers.pop(0)}. "
-                                             f"The opponent responded with {follow_ups.pop(0)}, now what's the best"
+        embed.add_field(name="Answer", value=f"The best move is ||{answers.pop(0)}||. "
+                                             f"The opponent responded with ||{follow_ups.pop(0)}||, now what's the best"
                                              f"move?")
     else:
-        embed.add_field(name="Answer", value=f"The best move is {answers.pop(0)}. That's the end of the puzzle!")
+        embed.add_field(name="Answer", value=f"The best move is ||{answers.pop(0)}||. That's the end of the puzzle! "
+                                             f"(difficulty rating {puzzle_rating})")
 
     await message.channel.send(embed=embed)
