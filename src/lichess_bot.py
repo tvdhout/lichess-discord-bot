@@ -38,7 +38,8 @@ async def commands(context):
                     inline=False)
     embed.add_field(name="Answering puzzles",
                     value=f'{PREFIX}answer [move] --> give your answer to the most recent puzzle. '
-                          f'Use the standard algebraic notation like Qxb7+\n'
+                          f'Use the standard algebraic notation like Qxb7+. You can give your answer in spoiler tags'
+                          f'like this: {PREFIX}answer `||move||`\n'
                           f'{PREFIX}bestmove --> get the best move to play in the previous puzzle, you can continue '
                           f'the puzzle from the next move.')
 
