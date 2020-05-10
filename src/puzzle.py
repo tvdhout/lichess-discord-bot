@@ -49,7 +49,6 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
         board = driver.find_element_by_class_name('puzzle__board')
         color = driver.find_element_by_xpath('/html/body/div[1]/main/div[2]/div[3]/div[1]/div[2]/em'
                                              ).text.split()[-1][:-1]  # black or white
-        print(color)
         time.sleep(.8)  # wait for the last move to play out
         im = Image.open(BytesIO(base64.b64decode(board.screenshot_as_base64)))  # take screenshot of page
 
