@@ -7,7 +7,7 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.firefox.options import Options
 
 from PIL import Image
 from io import BytesIO
@@ -17,7 +17,7 @@ from typing import Optional
 
 from config import PREFIX
 
-BASE_DIR = '/home/thijs/Lichess-discord-bot'
+BASE_DIR = '/Users/thijs/Documents/Side_projects/Lichess-discord-bot'
 answers = []
 follow_ups = []
 _puzzle_id = None
@@ -35,7 +35,7 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
     # Create a headless instance of a web browser
     options = Options()
     options.headless = True
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Firefox(options=options)
 
     try:
         # Get a puzzle image
@@ -99,20 +99,22 @@ async def answer_puzzle(message: discord.message.Message, answer: str) -> None:
                           url=f'https://lichess.org/training/{_puzzle_id}',
                           colour=0x00ffff
                           )
+    spoiler = '||' if answer.startswith('||') else ''
     if len(answers) == 0:
         embed.add_field(name="Oops!",
                         value="I'm sorry. I currently don't have the answers to a puzzle. Please try another "
                               f"{PREFIX}puzzle")
-    elif re.sub(r'[#+]', '', answer.lower()) == re.sub(r'[#+]', '', answers[0].lower()):
+    elif re.sub(r'[|#+]', '', answer.lower()) == re.sub(r'[#+]', '', answers[0].lower()):
         if len(follow_ups) == 0:
-            embed.add_field(name="Correct!", value=f"Yes! The best move was {answers[0]}. You completed the puzzle!")
+            embed.add_field(name="Correct!", value=f"Yes! The best move was {spoiler+answers[0]+spoiler}. "
+                                                   f"You completed the puzzle!")
         else:
-            embed.add_field(name="Correct!", value=f"Yes! The best move was {answers[0]}. The opponent responded with "
-                                                   f"{follow_ups.pop(0)}, now what's the best move?")
+            embed.add_field(name="Correct!", value=f"Yes! The best move was {spoiler+answers[0]+spoiler}. The opponent "
+                                                   f"responded with {follow_ups.pop(0)}, now what's the best move?")
         answers.pop(0)
     else:
-        embed.add_field(name="Wrong!", value=f"{answer} is not the best move. Try again using {PREFIX}answer or get the "
-                                             f"answer with {PREFIX}bestmove")
+        embed.add_field(name="Wrong!", value=f"{spoiler+answer+spoiler} is not the best move. Try again using {PREFIX}"
+                                             f"answer or get the answer with {PREFIX}bestmove")
 
     await message.channel.send(embed=embed)
 
