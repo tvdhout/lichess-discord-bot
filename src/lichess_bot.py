@@ -66,7 +66,8 @@ async def about(context):
     Usage:
     !about
     """
-    embed = discord.Embed(title=f"Commands", colour=0x00ffff)
+    embed = discord.Embed(title=f"Lichess Discord bot", colour=0x00ffff,
+                          url='https://github.com/tvdhout/Lichess-discord-bot')
     embed.add_field(name="About me",
                     value=f"I am a bot created by @stockvis and I can obtain various lichess-related "
                           f"pieces of information for you. You can see how I work here: "

@@ -59,7 +59,7 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
 
         puzzle = discord.File(f'{BASE_DIR}/media/puzzle.png', filename="puzzle.png")
         embed.set_image(url="attachment://puzzle.png")
-        embed.add_field(name="Answer with !answer", value="Use the standard algebraic notation, e.g. Qxb7+")
+        embed.add_field(name=f"Answer with {PREFIX}answer", value="Use the standard algebraic notation, e.g. Qxb7+")
 
         await message.channel.send(file=puzzle, embed=embed)
 
