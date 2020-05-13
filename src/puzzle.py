@@ -53,18 +53,20 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
     puzzle = discord.File(f'{BASE_DIR}/media/puzzle.gif', filename="puzzle.gif")  # load puzzle as Discord file
     embed.set_image(url="attachment://puzzle.gif")
     embed.add_field(name=f"Answer with {PREFIX}answer", value="Use the standard algebraic notation, e.g. Qxb7+\n"
-                                                              f"Puzzle difficulty rating: ||{puzzle_rating}||")
+                                                              f"Puzzle difficulty rating: ||**{puzzle_rating}**||")
 
     await message.channel.send(file=puzzle, embed=embed)  # send puzzle
 
     os.remove(f'{BASE_DIR}/media/puzzle.gif')
 
-    answers = [(move := js['data']['puzzle']['branch'])['san']]
+    move = js['data']['puzzle']['branch']
+    answers = [move['san']]
     follow_ups = []
 
     other = True
     while 'children' in move:
-        if len(next_moves := move['children']) == 0:
+        next_moves = move['children']
+        if len(next_moves) == 0:  # No more moves
             break
         move = next_moves[0]
         if other:
