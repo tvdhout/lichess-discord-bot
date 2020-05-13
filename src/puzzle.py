@@ -1,21 +1,16 @@
+import json
 import discord
-import base64
 
-# selenium requires installation of https://github.com/mozilla/geckodriver/releases and add path/to/executable to $PATH
-import selenium
-from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as ec
-from selenium.webdriver.chrome.options import Options
+import requests
+import wget
+import random
 
-from PIL import Image
-from io import BytesIO
-import time
 import re
+import os
 from typing import Optional
 
 from config import PREFIX, BASE_DIR
+from urllib.error import HTTPError
 
 answers = []
 follow_ups = []
@@ -32,62 +27,53 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
     message - the command entered by the user, used as a context to know which channel to post the reply to
     puzzle_id - by default an empty string, resulting in a random puzzle. People can also enter a particular  puzzle ID
     """
-    # Create a headless instance of a web browser
-    options = Options()
-    options.headless = True
-    driver = webdriver.Chrome(options=options)
+    global _puzzle_id, answers, follow_ups, puzzle_rating
 
-    try:
-        # Get a puzzle image
-        driver.get(f'https://lichess.org/training/{puzzle_id}')
+    if puzzle_id == '':
+        puzzle_id = random.randint(1, 125272)  # random puzzle ID
 
-        if puzzle_id == '':
-            puzzle_id = driver.current_url.split('/')[-1]
-        global _puzzle_id
-        _puzzle_id = puzzle_id
-
-        board = driver.find_element_by_class_name('puzzle__board')
-        color = driver.find_element_by_xpath('/html/body/div[1]/main/div[2]/div[3]/div[1]/div[2]/em'
-                                             ).text.split()[-1][:-1]  # black or white
-        time.sleep(.8)  # wait for the last move to play out
-        im = Image.open(BytesIO(base64.b64decode(board.screenshot_as_base64)))  # take screenshot of page
-
-        im.save(f'{BASE_DIR}/media/puzzle.png')
-
-        embed = discord.Embed(title=f"Find the best move for {color}!\n(puzzle {puzzle_id})",
-                              url=f'https://lichess.org/training/{puzzle_id}',
-                              colour=0x00ffff
-                              )
-
-        puzzle = discord.File(f'{BASE_DIR}/media/puzzle.png', filename="puzzle.png")
-        embed.set_image(url="attachment://puzzle.png")
-        embed.add_field(name=f"Answer with {PREFIX}answer", value="Use the standard algebraic notation, e.g. Qxb7+")
-
-        await message.channel.send(file=puzzle, embed=embed)
-
-        # Get answers
-        WebDriverWait(driver, 10).until(
-            ec.element_to_be_clickable((By.XPATH, "/html/body/div/main/div[2]/div[3]/div[2]/a"))).click()
-
-        moves = driver.find_elements_by_tag_name('move')  # List of all "move" elements
-
-        for i in range(len(moves)):  # Find the moves from where the user plays
-            if 'good' in moves[i].get_attribute('class'):
-                moves = moves[i:]
-                break
-
-        global answers, follow_ups, puzzle_rating  # update global variables
-        answers = [move.text.split()[0] for move in moves[::2]]  # list of user-given answers
-        if len(moves) > 1:
-            follow_ups = [move.text.split()[0] for move in moves[1::2]]  # list of computer follow ups
-
-        puzzle_rating = driver.find_element_by_xpath('/html/body/div[1]/main/aside/div/div[1]/div/p[1]/strong').text
-
-        driver.quit()  # quit the connection
-    except selenium.common.exceptions.NoSuchElementException:
+    try:  # Download the puzzle image
+        wget.download(f'https://lichess1.org/training/export/gif/thumbnail/{puzzle_id}.gif', f'{BASE_DIR}/media/puzzle.gif')
+    except HTTPError:
         await message.channel.send(f"I can't find a puzzle with puzzle id '{puzzle_id}'")
-        driver.quit()
-        return
+
+    response = requests.get(f'https://lichess.org/training/{puzzle_id}')
+    pattern = re.compile(r"lichess\.puzzle = (.*)</script><script nonce")  # find puzzle json string
+    json_txt = pattern.findall(response.text)[0]
+    js = json.loads(json_txt)
+    color = js['data']['puzzle']['color']
+    puzzle_rating = js['data']['puzzle']['rating']
+
+    # Create embedding for the puzzle to sit in
+    embed = discord.Embed(title=f"Find the best move for {color}!\n(puzzle {puzzle_id})",
+                          url=f'https://lichess.org/training/{puzzle_id}',
+                          colour=0x00ffff
+                          )
+
+    puzzle = discord.File(f'{BASE_DIR}/media/puzzle.gif', filename="puzzle.gif")  # load puzzle as Discord file
+    embed.set_image(url="attachment://puzzle.gif")
+    embed.add_field(name=f"Answer with {PREFIX}answer", value="Use the standard algebraic notation, e.g. Qxb7+\n"
+                                                              f"Puzzle difficulty rating: ||**{puzzle_rating}**||")
+
+    await message.channel.send(file=puzzle, embed=embed)  # send puzzle
+
+    os.remove(f'{BASE_DIR}/media/puzzle.gif')
+
+    move = js['data']['puzzle']['branch']
+    answers = [move['san']]
+    follow_ups = []
+
+    other = True
+    while 'children' in move:
+        next_moves = move['children']
+        if len(next_moves) == 0:  # No more moves
+            break
+        move = next_moves[0]
+        if other:
+            follow_ups.append(move['san'])
+        else:
+            answers.append(move['san'])
+        other = not other
 
 
 async def answer_puzzle(message: discord.message.Message, answer: str) -> None:
