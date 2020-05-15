@@ -1,5 +1,6 @@
 import json
 import discord
+import mysql.connector
 
 import requests
 import wget
@@ -11,6 +12,7 @@ from typing import Optional
 
 from config import PREFIX, BASE_DIR
 from urllib.error import HTTPError
+from PIL import Image
 
 answers = []
 follow_ups = []
@@ -30,19 +32,43 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
     global _puzzle_id, answers, follow_ups, puzzle_rating
 
     if puzzle_id == '':
-        puzzle_id = random.randint(1, 125272)  # random puzzle ID
+        puzzle_id = random.randint(1, 9000)  # random puzzle ID
+    _puzzle_id = puzzle_id
 
     try:  # Download the puzzle image
-        wget.download(f'https://lichess1.org/training/export/gif/thumbnail/{puzzle_id}.gif', f'{BASE_DIR}/media/puzzle.gif')
+        wget.download(f'https://lichess1.org/training/export/gif/thumbnail/{puzzle_id}.gif',
+                      f'{BASE_DIR}/media/puzzle.gif')
     except HTTPError:
         await message.channel.send(f"I can't find a puzzle with puzzle id '{puzzle_id}'")
 
-    response = requests.get(f'https://lichess.org/training/{puzzle_id}')
-    pattern = re.compile(r"lichess\.puzzle = (.*)</script><script nonce")  # find puzzle json string
-    json_txt = pattern.findall(response.text)[0]
-    js = json.loads(json_txt)
-    color = js['data']['puzzle']['color']
-    puzzle_rating = js['data']['puzzle']['rating']
+    try:
+        connection = mysql.connector.connect(user='thijs',
+                                             host='localhost',
+                                             database='lichess')
+    except mysql.connector.Error as err:
+        print(err)
+        await message.channel.send("Oops! I can't connect to the puzzle database. Please contact @stockvis")
+        return
+
+    cursor = connection.cursor(buffered=True)
+    get_puzzle = (f"SELECT * FROM puzzles WHERE puzzle_id = {puzzle_id}")
+
+    cursor.execute(get_puzzle)
+    puzzle_id, puzzle_rating, color, answers, follow_ups = cursor.fetchall()[0]
+    if not (answers.startswith('[') and answers.endswith(']') and
+            follow_ups.startswith('[') and follow_ups.endswith(']')):
+        await message.channel.send('Something went wrong loading this puzzle!')
+        return
+
+    answers = eval(answers)  # string representation to list
+    follow_ups = eval(follow_ups)  # string representation to list
+
+    # Add board coordinates overlay
+    board = Image.open(f'{BASE_DIR}/media/puzzle.gif').convert('RGBA')
+    coordinates = Image.open(f'{BASE_DIR}/media/{color}coords.png')
+
+    board = Image.alpha_composite(board, coordinates)  # overlay coordinates
+    board.save(f'{BASE_DIR}/media/puzzle.png', 'PNG')
 
     # Create embedding for the puzzle to sit in
     embed = discord.Embed(title=f"Find the best move for {color}!\n(puzzle {puzzle_id})",
@@ -50,30 +76,15 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
                           colour=0x00ffff
                           )
 
-    puzzle = discord.File(f'{BASE_DIR}/media/puzzle.gif', filename="puzzle.gif")  # load puzzle as Discord file
-    embed.set_image(url="attachment://puzzle.gif")
+    puzzle = discord.File(f'{BASE_DIR}/media/puzzle.png', filename="puzzle.png")  # load puzzle as Discord file
+    embed.set_image(url="attachment://puzzle.png")
     embed.add_field(name=f"Answer with {PREFIX}answer", value="Use the standard algebraic notation, e.g. Qxb7+\n"
                                                               f"Puzzle difficulty rating: ||**{puzzle_rating}**||")
 
     await message.channel.send(file=puzzle, embed=embed)  # send puzzle
 
+    os.remove(f'{BASE_DIR}/media/puzzle.png')
     os.remove(f'{BASE_DIR}/media/puzzle.gif')
-
-    move = js['data']['puzzle']['branch']
-    answers = [move['san']]
-    follow_ups = []
-
-    other = True
-    while 'children' in move:
-        next_moves = move['children']
-        if len(next_moves) == 0:  # No more moves
-            break
-        move = next_moves[0]
-        if other:
-            follow_ups.append(move['san'])
-        else:
-            answers.append(move['san'])
-        other = not other
 
 
 async def answer_puzzle(message: discord.message.Message, answer: str) -> None:
