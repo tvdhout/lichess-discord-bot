@@ -52,7 +52,7 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
                                    f"rating1 and rating2.")
         return
 
-    get_puzzle = (f"SELECT * FROM puzzles WHERE puzzle_id = {puzzle_id};")
+    get_puzzle = f"SELECT * FROM puzzles WHERE puzzle_id = {puzzle_id};"
 
     cursor.execute(get_puzzle)
     puzzle_id, puzzle_rating, color, answers, follow_ups = cursor.fetchall()[0]
@@ -193,9 +193,10 @@ async def answer_puzzle(message: discord.message.Message, answer: str) -> None:
     await message.channel.send(embed=embed)
 
     update_query = (f"UPDATE channel_puzzles "
-                    f"SET answers = {str(answers)}, follow_ups = {str(follow_ups)} "
-                    f"WHERE channel_id = {str(message.channel.id)};")
-    cursor.execute(update_query)
+                    f"SET answers = %s, follow_ups = %s "
+                    f"WHERE channel_id = %s;")
+    update_data = (str(answers), str(follow_ups), str(message.channel.id))
+    cursor.execute(update_query, update_data)
     connection.commit()
 
     cursor.close()
@@ -209,8 +210,36 @@ async def give_best_move(message: discord.message.Message) -> None:
     ----------
     message - the command entered by the user, used as a context to know which channel to post the reply to
     """
-    embed = discord.Embed(title=f"Answering puzzle {_puzzle_id}",
-                          url=f'https://lichess.org/training/{_puzzle_id}',
+    try:  # Connect to database
+        connection = mysql.connector.connect(user='thijs',
+                                             host='localhost',
+                                             database='lichess')
+    except mysql.connector.Error as err:
+        print(err)
+        await message.channel.send("Oops! I can't connect to the puzzle database. Please contact @stockvis")
+        return
+
+    cursor = connection.cursor(buffered=True)
+
+    get_puzzle = (f"SELECT * FROM channel_puzzles WHERE channel_id = {str(message.channel.id)};")
+    cursor.execute(get_puzzle)
+    try:
+        _, puzzle_id, puzzle_rating, answers, follow_ups = cursor.fetchall()[0]
+    except IndexError:
+        await message.channel.send(f"There is no active puzzle in this channel! See {PREFIX}commands on how to start a "
+                                   f"puzzle")
+        return
+
+    if not (answers.startswith('[') and answers.endswith(']') and
+            follow_ups.startswith('[') and follow_ups.endswith(']')):
+        await message.channel.send('Something went wrong loading this puzzle!')
+        return
+
+    answers = eval(answers)  # string representation to list
+    follow_ups = eval(follow_ups)  # string representation to list
+
+    embed = discord.Embed(title=f"Answering puzzle {puzzle_id}",
+                          url=f'https://lichess.org/training/{puzzle_id}',
                           colour=0x00ffff
                           )
     if len(answers) == 0:
@@ -220,9 +249,19 @@ async def give_best_move(message: discord.message.Message) -> None:
     elif len(follow_ups) > 0:
         embed.add_field(name="Answer", value=f"The best move is ||{answers.pop(0)}||. "
                                              f"The opponent responded with ||{follow_ups.pop(0)}||, now what's the best"
-                                             f"move?")
+                                             f" move?")
     else:
         embed.add_field(name="Answer", value=f"The best move is ||{answers.pop(0)}||. That's the end of the puzzle! "
                                              f"(difficulty rating {puzzle_rating})")
 
     await message.channel.send(embed=embed)
+
+    update_query = (f"UPDATE channel_puzzles "
+                    f"SET answers = %s, follow_ups = %s "
+                    f"WHERE channel_id = %s;")
+    update_data = (str(answers), str(follow_ups), str(message.channel.id))
+    cursor.execute(update_query, update_data)
+    connection.commit()
+
+    cursor.close()
+    connection.disconnect()
