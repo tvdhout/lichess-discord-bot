@@ -41,7 +41,7 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
     except HTTPError:
         await message.channel.send(f"I can't find a puzzle with puzzle id '{puzzle_id}'")
 
-    try:
+    try:  # Connect to database
         connection = mysql.connector.connect(user='thijs',
                                              host='localhost',
                                              database='lichess')
@@ -85,6 +85,10 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
 
     os.remove(f'{BASE_DIR}/media/puzzle.png')
     os.remove(f'{BASE_DIR}/media/puzzle.gif')
+
+
+async def puzzle_by_rating(message: discord.message.Message, low: int, high: int):
+
 
 
 async def answer_puzzle(message: discord.message.Message, answer: str) -> None:

@@ -20,16 +20,14 @@ add_puzzle = ("INSERT INTO puzzles "
                "VALUES (%s, %s, %s, %s, %s)")
 
 start = time.time()
-for puzzle_id in range(10001, 20001):
+for puzzle_id in range(50001, 100001):
     secs_to_sleep = 1
     try:
         time.sleep(secs_to_sleep)
-        print(puzzle_id)
-        sys.stdout.flush()
+        print(puzzle_id, flush=True)
         response = requests.get(f'https://lichess.org/training/{puzzle_id}')
         while response.status_code == 429:  # Too many requests, wait a bit
-            print("sleeping...")
-            sys.stdout.flush()
+            print("sleeping...", flush=True)
             secs_to_sleep += 14  # sleep a bit longer
             time.sleep(secs_to_sleep)
             response = requests.get(f'https://lichess.org/training/{puzzle_id}')

@@ -142,8 +142,14 @@ async def puzzle(context):
     contents = message.content.split()
     if len(contents) == 1:  # !puzzle
         await show_puzzle(message)
-    else:  # !puzzle [id]
+    elif len(contents) == 2:  # !puzzle [id]
+        match = re.match(r'(\d+) *- *(\d+)', contents[1])
+        if match is not None:
+            low = match.group(1)
+            high = match.group(2)
         await show_puzzle(message, contents[1])
+    else:
+        # await
 
 
 @client.command(pass_context=True)
