@@ -31,16 +31,6 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
     """
     global _puzzle_id, answers, follow_ups, puzzle_rating
 
-    if puzzle_id == '':
-        puzzle_id = random.randint(1, 9000)  # random puzzle ID
-    _puzzle_id = puzzle_id
-
-    try:  # Download the puzzle image
-        wget.download(f'https://lichess1.org/training/export/gif/thumbnail/{puzzle_id}.gif',
-                      f'{BASE_DIR}/media/puzzle.gif')
-    except HTTPError:
-        await message.channel.send(f"I can't find a puzzle with puzzle id '{puzzle_id}'")
-
     try:  # Connect to database
         connection = mysql.connector.connect(user='thijs',
                                              host='localhost',
@@ -51,7 +41,25 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
         return
 
     cursor = connection.cursor(buffered=True)
-    get_puzzle = (f"SELECT * FROM puzzles WHERE puzzle_id = {puzzle_id}")
+
+    if puzzle_id == '':
+        cursor.execute(f"SELECT puzzle_id from puzzles ORDER BY RAND() LIMIT 1;")
+        puzzle_id = cursor.fetchall()[0][0]  # random puzzle ID
+    _puzzle_id = puzzle_id
+
+    try:  # Download the puzzle image
+        wget.download(f'https://lichess1.org/training/export/gif/thumbnail/{puzzle_id}.gif',
+                      f'{BASE_DIR}/media/puzzle.gif')
+    except HTTPError:
+        await message.channel.send(f"I can't find a puzzle with puzzle id '{puzzle_id}.'\n"
+                                   f"Command usage:\n"
+                                   f"{PREFIX}puzzle -> show a random puzzle\n"
+                                   f"{PREFIX}puzzle [id] -> show a particular puzzle\n"
+                                   f"{PREFIX}puzzle rating1-rating2 -> show a random puzzle with a rating between "
+                                   f"rating1 and rating2.")
+        return
+
+    get_puzzle = (f"SELECT * FROM puzzles WHERE puzzle_id = {puzzle_id};")
 
     cursor.execute(get_puzzle)
     puzzle_id, puzzle_rating, color, answers, follow_ups = cursor.fetchall()[0]
@@ -88,7 +96,29 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
 
 
 async def puzzle_by_rating(message: discord.message.Message, low: int, high: int):
+    if low > high:
+        temp = low
+        low = high
+        high = temp
+    try:  # Connect to database
+        connection = mysql.connector.connect(user='thijs',
+                                             host='localhost',
+                                             database='lichess')
+    except mysql.connector.Error as err:
+        print(err)
+        await message.channel.send("Oops! I can't connect to the puzzle database. Please contact @stockvis")
+        return
 
+    cursor = connection.cursor(buffered=True)
+    get_puzzle = (f"SELECT puzzle_id FROM puzzles WHERE rating BETWEEN {low} AND {high}")
+    cursor.execute(get_puzzle)
+    try:
+        puzzle_id = random.choice(cursor.fetchall())[0]
+    except IndexError:
+        await message.channel.send(f"I can't find a puzzle between ratings {low} and {high}!")
+        return
+
+    await show_puzzle(message, puzzle_id)
 
 
 async def answer_puzzle(message: discord.message.Message, answer: str) -> None:

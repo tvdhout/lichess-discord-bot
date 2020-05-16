@@ -7,7 +7,7 @@ import re
 from discord.ext import commands
 import requests  # need to also pip install "requests[security]"
 from rating import all_ratings, gamemode_rating
-from puzzle import show_puzzle, answer_puzzle, give_best_move
+from puzzle import show_puzzle, answer_puzzle, give_best_move, puzzle_by_rating
 from config import PREFIX, TOKEN
 
 client = commands.Bot(command_prefix=PREFIX)
@@ -33,8 +33,10 @@ async def commands(context):
     embed.add_field(name=f"Rating", value=f"{PREFIX}rating [username] --> show all ratings and average rating"
                                           f"\n{PREFIX}rating [username] [gamemode] --> show rating for a "
                                           f"particular gamemode", inline=False)
-    embed.add_field(name=f"Puzzle", value=f"{PREFIX}puzzle --> get a random lichess puzzle to solve!"
-                                          f"\n{PREFIX}puzzle [puzzle_id] --> show a particular lichess puzzle",
+    embed.add_field(name=f"Puzzle", value=f"{PREFIX}puzzle --> show a random lichess puzzle to solve"
+                                          f"\n{PREFIX}puzzle [puzzle_id] --> show a particular lichess puzzle\n"
+                                          f"{PREFIX}puzzle [rating1]-[rating2] --> show a random puzzle with a rating "
+                                          f"between rating1 and rating2",
                     inline=False)
     embed.add_field(name="Answering puzzles",
                     value=f'{PREFIX}answer [move] --> give your answer to the most recent puzzle. '
@@ -138,18 +140,17 @@ async def puzzle(context):
     message = context.message
     if message.author == client.user:
         return
-
+    prefix = '\\'+PREFIX if PREFIX in '*+()&^$[]{}\\.' else PREFIX  # escape prefix character to not break the regex
+    match = re.match(rf'^{prefix}puzzle +(\d+) *[ _\-] *(\d+)$', message.content)
     contents = message.content.split()
-    if len(contents) == 1:  # !puzzle
-        await show_puzzle(message)
-    elif len(contents) == 2:  # !puzzle [id]
-        match = re.match(r'(\d+) *- *(\d+)', contents[1])
-        if match is not None:
-            low = match.group(1)
-            high = match.group(2)
+    if match is not None:  # !puzzle [id]
+        low = int(match.group(1))
+        high = int(match.group(2))
+        await puzzle_by_rating(message, low, high)
+    elif len(contents) == 2:
         await show_puzzle(message, contents[1])
     else:
-        # await
+        await show_puzzle(message)
 
 
 @client.command(pass_context=True)
