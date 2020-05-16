@@ -20,7 +20,7 @@ add_puzzle = ("INSERT INTO puzzles "
                "VALUES (%s, %s, %s, %s, %s)")
 
 start = time.time()
-for puzzle_id in range(50001, 100001):
+for puzzle_id in range(54776, 100001):
     secs_to_sleep = 1
     try:
         time.sleep(secs_to_sleep)
