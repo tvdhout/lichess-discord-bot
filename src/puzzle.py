@@ -1,5 +1,6 @@
 import json
 import discord
+import mysql.connector
 
 import requests
 import wget
@@ -11,11 +12,7 @@ from typing import Optional
 
 from config import PREFIX, BASE_DIR
 from urllib.error import HTTPError
-
-answers = []
-follow_ups = []
-_puzzle_id = None
-puzzle_rating = None
+from PIL import Image
 
 
 async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str] = '') -> None:
@@ -27,22 +24,52 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
     message - the command entered by the user, used as a context to know which channel to post the reply to
     puzzle_id - by default an empty string, resulting in a random puzzle. People can also enter a particular  puzzle ID
     """
-    global _puzzle_id, answers, follow_ups, puzzle_rating
+
+    try:  # Connect to database
+        connection = mysql.connector.connect(user='thijs',
+                                             host='localhost',
+                                             database='lichess')
+    except mysql.connector.Error as err:
+        print(err)
+        await message.channel.send("Oops! I can't connect to the puzzle database. Please contact @stockvis")
+        return
+
+    cursor = connection.cursor(buffered=True)
 
     if puzzle_id == '':
-        puzzle_id = random.randint(1, 125272)  # random puzzle ID
+        cursor.execute(f"SELECT puzzle_id from puzzles ORDER BY RAND() LIMIT 1;")
+        puzzle_id = cursor.fetchall()[0][0]  # random puzzle ID
 
     try:  # Download the puzzle image
-        wget.download(f'https://lichess1.org/training/export/gif/thumbnail/{puzzle_id}.gif', f'{BASE_DIR}/media/puzzle.gif')
+        wget.download(f'https://lichess1.org/training/export/gif/thumbnail/{puzzle_id}.gif',
+                      f'{BASE_DIR}/media/puzzle.gif')
     except HTTPError:
-        await message.channel.send(f"I can't find a puzzle with puzzle id '{puzzle_id}'")
+        await message.channel.send(f"I can't find a puzzle with puzzle id '{puzzle_id}.'\n"
+                                   f"Command usage:\n"
+                                   f"{PREFIX}puzzle -> show a random puzzle\n"
+                                   f"{PREFIX}puzzle [id] -> show a particular puzzle\n"
+                                   f"{PREFIX}puzzle rating1-rating2 -> show a random puzzle with a rating between "
+                                   f"rating1 and rating2.")
+        return
 
-    response = requests.get(f'https://lichess.org/training/{puzzle_id}')
-    pattern = re.compile(r"lichess\.puzzle = (.*)</script><script nonce")  # find puzzle json string
-    json_txt = pattern.findall(response.text)[0]
-    js = json.loads(json_txt)
-    color = js['data']['puzzle']['color']
-    puzzle_rating = js['data']['puzzle']['rating']
+    get_puzzle = f"SELECT * FROM puzzles WHERE puzzle_id = {puzzle_id};"
+
+    cursor.execute(get_puzzle)
+    puzzle_id, puzzle_rating, color, answers, follow_ups = cursor.fetchall()[0]
+    if not (answers.startswith('[') and answers.endswith(']') and
+            follow_ups.startswith('[') and follow_ups.endswith(']')):
+        await message.channel.send('Something went wrong loading this puzzle!')
+        return
+
+    answers = eval(answers)  # string representation to list
+    follow_ups = eval(follow_ups)  # string representation to list
+
+    # Add board coordinates overlay
+    board = Image.open(f'{BASE_DIR}/media/puzzle.gif').convert('RGBA')
+    coordinates = Image.open(f'{BASE_DIR}/media/{color}coords.png')
+
+    board = Image.alpha_composite(board, coordinates)  # overlay coordinates
+    board.save(f'{BASE_DIR}/media/puzzle.png', 'PNG')
 
     # Create embedding for the puzzle to sit in
     embed = discord.Embed(title=f"Find the best move for {color}!\n(puzzle {puzzle_id})",
@@ -50,30 +77,57 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
                           colour=0x00ffff
                           )
 
-    puzzle = discord.File(f'{BASE_DIR}/media/puzzle.gif', filename="puzzle.gif")  # load puzzle as Discord file
-    embed.set_image(url="attachment://puzzle.gif")
+    puzzle = discord.File(f'{BASE_DIR}/media/puzzle.png', filename="puzzle.png")  # load puzzle as Discord file
+    embed.set_image(url="attachment://puzzle.png")
     embed.add_field(name=f"Answer with {PREFIX}answer", value="Use the standard algebraic notation, e.g. Qxb7+\n"
                                                               f"Puzzle difficulty rating: ||**{puzzle_rating}**||")
 
     await message.channel.send(file=puzzle, embed=embed)  # send puzzle
 
+    # Set current puzzle as active for this channel.
+    channel_puzzle = ("INSERT INTO channel_puzzles "
+                      "(channel_id, puzzle_id, rating, answers, follow_ups) "
+                      "VALUES (%s, %s, %s, %s, %s) "
+                      "ON DUPLICATE KEY UPDATE puzzle_id = VALUES(puzzle_id), rating = VALUES(rating), "
+                      "answers = VALUES(answers), follow_ups = VALUES(follow_ups)")
+    data_puzzle = (str(message.channel.id), int(puzzle_id), int(puzzle_rating), str(answers), str(follow_ups))
+
+    cursor.execute(channel_puzzle, data_puzzle)
+    connection.commit()
+
+    os.remove(f'{BASE_DIR}/media/puzzle.png')
     os.remove(f'{BASE_DIR}/media/puzzle.gif')
+    cursor.close()
+    connection.disconnect()
 
-    move = js['data']['puzzle']['branch']
-    answers = [move['san']]
-    follow_ups = []
 
-    other = True
-    while 'children' in move:
-        next_moves = move['children']
-        if len(next_moves) == 0:  # No more moves
-            break
-        move = next_moves[0]
-        if other:
-            follow_ups.append(move['san'])
-        else:
-            answers.append(move['san'])
-        other = not other
+async def puzzle_by_rating(message: discord.message.Message, low: int, high: int):
+    if low > high:
+        temp = low
+        low = high
+        high = temp
+    try:  # Connect to database
+        connection = mysql.connector.connect(user='thijs',
+                                             host='localhost',
+                                             database='lichess')
+    except mysql.connector.Error as err:
+        print(err)
+        await message.channel.send("Oops! I can't connect to the puzzle database. Please contact @stockvis")
+        return
+
+    cursor = connection.cursor(buffered=True)
+    get_puzzle = (f"SELECT puzzle_id FROM puzzles WHERE rating BETWEEN {low} AND {high}")
+    cursor.execute(get_puzzle)
+    try:
+        puzzle_id = random.choice(cursor.fetchall())[0]
+    except IndexError:
+        await message.channel.send(f"I can't find a puzzle between ratings {low} and {high}!")
+        return
+
+    await show_puzzle(message, puzzle_id)
+
+    cursor.close()
+    connection.disconnect()
 
 
 async def answer_puzzle(message: discord.message.Message, answer: str) -> None:
@@ -85,10 +139,39 @@ async def answer_puzzle(message: discord.message.Message, answer: str) -> None:
     message - the command entered by the user, used as a context to know which channel to post the reply to
     answer - the move the user provided
     """
-    embed = discord.Embed(title=f"Answering puzzle {_puzzle_id}",
-                          url=f'https://lichess.org/training/{_puzzle_id}',
+    try:  # Connect to database
+        connection = mysql.connector.connect(user='thijs',
+                                             host='localhost',
+                                             database='lichess')
+    except mysql.connector.Error as err:
+        print(err)
+        await message.channel.send("Oops! I can't connect to the puzzle database. Please contact @stockvis")
+        return
+
+    cursor = connection.cursor(buffered=True)
+
+    get_puzzle = (f"SELECT * FROM channel_puzzles WHERE channel_id = {str(message.channel.id)};")
+    cursor.execute(get_puzzle)
+    try:
+        _, puzzle_id, puzzle_rating, answers, follow_ups = cursor.fetchall()[0]
+    except IndexError:
+        await message.channel.send(f"There is no active puzzle in this channel! See {PREFIX}commands on how to start a "
+                                   f"puzzle")
+        return
+
+    if not (answers.startswith('[') and answers.endswith(']') and
+            follow_ups.startswith('[') and follow_ups.endswith(']')):
+        await message.channel.send('Something went wrong loading this puzzle!')
+        return
+
+    answers = eval(answers)  # string representation to list
+    follow_ups = eval(follow_ups)  # string representation to list
+
+    embed = discord.Embed(title=f"Answering puzzle {puzzle_id}",
+                          url=f'https://lichess.org/training/{puzzle_id}',
                           colour=0x00ffff
                           )
+
     spoiler = '||' if answer.startswith('||') else ''
     if len(answers) == 0:
         embed.add_field(name="Oops!",
@@ -109,6 +192,16 @@ async def answer_puzzle(message: discord.message.Message, answer: str) -> None:
 
     await message.channel.send(embed=embed)
 
+    update_query = (f"UPDATE channel_puzzles "
+                    f"SET answers = %s, follow_ups = %s "
+                    f"WHERE channel_id = %s;")
+    update_data = (str(answers), str(follow_ups), str(message.channel.id))
+    cursor.execute(update_query, update_data)
+    connection.commit()
+
+    cursor.close()
+    connection.disconnect()
+
 
 async def give_best_move(message: discord.message.Message) -> None:
     """
@@ -117,8 +210,36 @@ async def give_best_move(message: discord.message.Message) -> None:
     ----------
     message - the command entered by the user, used as a context to know which channel to post the reply to
     """
-    embed = discord.Embed(title=f"Answering puzzle {_puzzle_id}",
-                          url=f'https://lichess.org/training/{_puzzle_id}',
+    try:  # Connect to database
+        connection = mysql.connector.connect(user='thijs',
+                                             host='localhost',
+                                             database='lichess')
+    except mysql.connector.Error as err:
+        print(err)
+        await message.channel.send("Oops! I can't connect to the puzzle database. Please contact @stockvis")
+        return
+
+    cursor = connection.cursor(buffered=True)
+
+    get_puzzle = (f"SELECT * FROM channel_puzzles WHERE channel_id = {str(message.channel.id)};")
+    cursor.execute(get_puzzle)
+    try:
+        _, puzzle_id, puzzle_rating, answers, follow_ups = cursor.fetchall()[0]
+    except IndexError:
+        await message.channel.send(f"There is no active puzzle in this channel! See {PREFIX}commands on how to start a "
+                                   f"puzzle")
+        return
+
+    if not (answers.startswith('[') and answers.endswith(']') and
+            follow_ups.startswith('[') and follow_ups.endswith(']')):
+        await message.channel.send('Something went wrong loading this puzzle!')
+        return
+
+    answers = eval(answers)  # string representation to list
+    follow_ups = eval(follow_ups)  # string representation to list
+
+    embed = discord.Embed(title=f"Answering puzzle {puzzle_id}",
+                          url=f'https://lichess.org/training/{puzzle_id}',
                           colour=0x00ffff
                           )
     if len(answers) == 0:
@@ -128,9 +249,19 @@ async def give_best_move(message: discord.message.Message) -> None:
     elif len(follow_ups) > 0:
         embed.add_field(name="Answer", value=f"The best move is ||{answers.pop(0)}||. "
                                              f"The opponent responded with ||{follow_ups.pop(0)}||, now what's the best"
-                                             f"move?")
+                                             f" move?")
     else:
         embed.add_field(name="Answer", value=f"The best move is ||{answers.pop(0)}||. That's the end of the puzzle! "
                                              f"(difficulty rating {puzzle_rating})")
 
     await message.channel.send(embed=embed)
+
+    update_query = (f"UPDATE channel_puzzles "
+                    f"SET answers = %s, follow_ups = %s "
+                    f"WHERE channel_id = %s;")
+    update_data = (str(answers), str(follow_ups), str(message.channel.id))
+    cursor.execute(update_query, update_data)
+    connection.commit()
+
+    cursor.close()
+    connection.disconnect()
