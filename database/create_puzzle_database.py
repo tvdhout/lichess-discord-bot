@@ -20,7 +20,7 @@ add_puzzle = ("INSERT INTO puzzles "
                "VALUES (%s, %s, %s, %s, %s)")
 
 start = time.time()
-for puzzle_id in range(56876, 100001):
+for puzzle_id in range(125001, 125273):
     secs_to_sleep = 1
     try:
         time.sleep(secs_to_sleep)
@@ -28,7 +28,7 @@ for puzzle_id in range(56876, 100001):
         response = requests.get(f'https://lichess.org/training/{puzzle_id}')
         while response.status_code == 429:  # Too many requests, wait a bit
             print("sleeping...", flush=True)
-            secs_to_sleep += 14  # sleep a bit longer
+            secs_to_sleep += 9  # sleep a bit longer
             time.sleep(secs_to_sleep)
             response = requests.get(f'https://lichess.org/training/{puzzle_id}')
         pattern = re.compile(r"lichess\.puzzle = (.*)</script><script nonce")  # find puzzle json string
