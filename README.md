@@ -1,5 +1,7 @@
 # Lichess discord bot
 
+[![Bot user icon](media/bot_user_badge.png)](https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permissions=52224&scope=bot)
+
 [Click here to invite the bot to your server!](https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permissions=52224&scope=bot)
 
 ## DESCRIPTION
