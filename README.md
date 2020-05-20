@@ -16,6 +16,16 @@ This bot integrates with the lichess.org chess website. The bot can be used to r
 * `-puzzle` --> show a random chess puzzle
 * `-puzzle [id]` --> show a specific chess puzzle
 * `-puzzle [rating1]-[rating2]` --> show a random chess puzzle with a difficulty rating in a range
+* `-answer [move]` --> give an answer to the most recent puzzle shown in the channel
+* `-bestmove` --> ask for the answer for the most recent puzzle shown in the channel. If there are more steps to the puzzle, the user can continue from the next step
 
-## Help / Contact / Issues / Requests
+## Help / Contact / Issues / Requests / Collaboration
 Questions, issues and requests can be posted as an issue in this repository.
+
+## Screenshots
+![Puzzle command screenshot](/media/puzzle_command.png)
+
+![Answer command screenshot](/media/answer_command.png)
+
+![Rating command screenshot](/media/rating_command.png)
+
