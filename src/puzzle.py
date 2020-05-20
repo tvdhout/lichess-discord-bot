@@ -1,18 +1,15 @@
-import json
 import discord
 import mysql.connector
-
-import requests
+from mysql.connector.cursor import MySQLCursor
 import wget
 import random
-
 import re
 import os
-from typing import Optional
-
-from config import PREFIX, BASE_DIR
 from urllib.error import HTTPError
 from PIL import Image
+from typing import Tuple, Optional, Any
+
+from config import PREFIX, BASE_DIR
 
 
 async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str] = '') -> None:
@@ -101,7 +98,7 @@ async def show_puzzle(message: discord.message.Message, puzzle_id: Optional[str]
     connection.disconnect()
 
 
-async def puzzle_by_rating(message: discord.message.Message, low: int, high: int):
+async def puzzle_by_rating(message: discord.message.Message, low: int, high: int) -> None:
     if low > high:
         temp = low
         low = high
@@ -116,7 +113,7 @@ async def puzzle_by_rating(message: discord.message.Message, low: int, high: int
         return
 
     cursor = connection.cursor(buffered=True)
-    get_puzzle = (f"SELECT puzzle_id FROM puzzles WHERE rating BETWEEN {low} AND {high}")
+    get_puzzle = f"SELECT puzzle_id FROM puzzles WHERE rating BETWEEN {low} AND {high}"
     cursor.execute(get_puzzle)
     try:
         puzzle_id = random.choice(cursor.fetchall())[0]
@@ -150,22 +147,12 @@ async def answer_puzzle(message: discord.message.Message, answer: str) -> None:
 
     cursor = connection.cursor(buffered=True)
 
-    get_puzzle = (f"SELECT * FROM channel_puzzles WHERE channel_id = {str(message.channel.id)};")
-    cursor.execute(get_puzzle)
     try:
-        _, puzzle_id, puzzle_rating, answers, follow_ups = cursor.fetchall()[0]
-    except IndexError:
-        await message.channel.send(f"There is no active puzzle in this channel! See {PREFIX}commands on how to start a "
-                                   f"puzzle")
+        puzzle_id, puzzle_rating, answers, follow_ups = get_puzzle_by_channel_id(cursor, str(message.channel.id))
+    except TypeError:  # None returned
+        await message.channel.send("Something went wrong searching for the answer for this puzzle! Please contact"
+                                   "@Stockvis")
         return
-
-    if not (answers.startswith('[') and answers.endswith(']') and
-            follow_ups.startswith('[') and follow_ups.endswith(']')):
-        await message.channel.send('Something went wrong loading this puzzle!')
-        return
-
-    answers = eval(answers)  # string representation to list
-    follow_ups = eval(follow_ups)  # string representation to list
 
     embed = discord.Embed(title=f"Answering puzzle {puzzle_id}",
                           url=f'https://lichess.org/training/{puzzle_id}',
@@ -192,13 +179,11 @@ async def answer_puzzle(message: discord.message.Message, answer: str) -> None:
 
     await message.channel.send(embed=embed)
 
-    update_query = (f"UPDATE channel_puzzles "
-                    f"SET answers = %s, follow_ups = %s "
-                    f"WHERE channel_id = %s;")
-    update_data = (str(answers), str(follow_ups), str(message.channel.id))
-    cursor.execute(update_query, update_data)
-    connection.commit()
+    if not update_puzzle_by_channel_id(cursor, str(message.channel.id), str(answers), str(follow_ups)):
+        await message.channel.send("Something went wrong updating this puzzle's progress in the database. Please"
+                                   "contact @Stockvis")
 
+    connection.commit()
     cursor.close()
     connection.disconnect()
 
@@ -210,6 +195,7 @@ async def give_best_move(message: discord.message.Message) -> None:
     ----------
     message - the command entered by the user, used as a context to know which channel to post the reply to
     """
+
     try:  # Connect to database
         connection = mysql.connector.connect(user='thijs',
                                              host='localhost',
@@ -221,22 +207,12 @@ async def give_best_move(message: discord.message.Message) -> None:
 
     cursor = connection.cursor(buffered=True)
 
-    get_puzzle = (f"SELECT * FROM channel_puzzles WHERE channel_id = {str(message.channel.id)};")
-    cursor.execute(get_puzzle)
     try:
-        _, puzzle_id, puzzle_rating, answers, follow_ups = cursor.fetchall()[0]
-    except IndexError:
-        await message.channel.send(f"There is no active puzzle in this channel! See {PREFIX}commands on how to start a "
-                                   f"puzzle")
+        puzzle_id, puzzle_rating, answers, follow_ups = get_puzzle_by_channel_id(cursor, str(message.channel.id))
+    except TypeError:  # None returned
+        await message.channel.send("Something went wrong searching for the answer for this puzzle! Please contact"
+                                   "@Stockvis")
         return
-
-    if not (answers.startswith('[') and answers.endswith(']') and
-            follow_ups.startswith('[') and follow_ups.endswith(']')):
-        await message.channel.send('Something went wrong loading this puzzle!')
-        return
-
-    answers = eval(answers)  # string representation to list
-    follow_ups = eval(follow_ups)  # string representation to list
 
     embed = discord.Embed(title=f"Answering puzzle {puzzle_id}",
                           url=f'https://lichess.org/training/{puzzle_id}',
@@ -256,12 +232,43 @@ async def give_best_move(message: discord.message.Message) -> None:
 
     await message.channel.send(embed=embed)
 
+    if not update_puzzle_by_channel_id(cursor, str(message.channel.id), str(answers), str(follow_ups)):
+        await message.channel.send("Something went wrong updating this puzzle's progress in the database. Please"
+                                   "contact @Stockvis")
+
+    connection.commit()
+    cursor.close()
+    connection.disconnect()
+
+
+def get_puzzle_by_channel_id(cursor: MySQLCursor, channel_id: str) -> Optional[Tuple[Any, Any, Any, Any]]:
+
+    get_puzzle = f"SELECT * FROM channel_puzzles WHERE channel_id = {channel_id};"
+    cursor.execute(get_puzzle)
+    try:
+        _, puzzle_id, puzzle_rating, answers, follow_ups = cursor.fetchall()[0]
+    except IndexError:
+        return None
+
+    if not (answers.startswith('[') and answers.endswith(']') and
+            follow_ups.startswith('[') and follow_ups.endswith(']')):
+        return None
+
+    answers = eval(answers)  # string representation to list
+    follow_ups = eval(follow_ups)  # string representation to list
+
+    return puzzle_id, puzzle_rating, answers, follow_ups
+
+
+def update_puzzle_by_channel_id(cursor: MySQLCursor, channel_id: str, answers: str, follow_ups: str) -> bool:
+
     update_query = (f"UPDATE channel_puzzles "
                     f"SET answers = %s, follow_ups = %s "
                     f"WHERE channel_id = %s;")
-    update_data = (str(answers), str(follow_ups), str(message.channel.id))
-    cursor.execute(update_query, update_data)
-    connection.commit()
+    update_data = (answers, follow_ups, channel_id)
 
-    cursor.close()
-    connection.disconnect()
+    try:
+        cursor.execute(update_query, update_data)
+        return True
+    except IndexError:
+        return False
