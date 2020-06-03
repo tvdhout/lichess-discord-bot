@@ -7,10 +7,11 @@ import re
 from discord.ext import commands
 from discord.ext.commands import Context
 import requests  # need to also pip install "requests[security]"
+
 from rating import all_ratings, gamemode_rating
 from puzzle import show_puzzle, answer_puzzle, give_best_move, puzzle_by_rating
-# from config import PREFIX, TOKEN
-from config_dev import PREFIX, TOKEN
+from config import PREFIX, TOKEN
+# from config_dev import PREFIX, TOKEN
 
 
 client = commands.Bot(command_prefix=PREFIX)
@@ -32,20 +33,20 @@ async def commands(context: Context):
     !commands
     """
     embed = discord.Embed(title=f"Commands", colour=0x00ffff)
-    embed.add_field(name=f"About", value=f"{PREFIX}about --> Show information about this bot", inline=False)
-    embed.add_field(name=f"Rating", value=f"{PREFIX}rating [username] --> show all ratings and average rating"
-                                          f"\n{PREFIX}rating [username] [gamemode] --> show rating for a "
+    embed.add_field(name=f"About", value=f"`{PREFIX}about` --> Show information about this bot", inline=False)
+    embed.add_field(name=f"Rating", value=f"`{PREFIX}rating [username]` --> show all ratings and average rating"
+                                          f"\n`{PREFIX}rating [username] [gamemode]` --> show rating for a "
                                           f"particular gamemode", inline=False)
-    embed.add_field(name=f"Puzzle", value=f"{PREFIX}puzzle --> show a random lichess puzzle to solve"
-                                          f"\n{PREFIX}puzzle [puzzle_id] --> show a particular lichess puzzle\n"
-                                          f"{PREFIX}puzzle [rating1]-[rating2] --> show a random puzzle with a rating "
+    embed.add_field(name=f"Puzzle", value=f"`{PREFIX}puzzle` --> show a random lichess puzzle to solve"
+                                          f"\n`{PREFIX}puzzle [puzzle_id]` --> show a particular lichess puzzle\n"
+                                          f"`{PREFIX}puzzle [rating1]-[rating2]` --> show a random puzzle with a rating "
                                           f"between rating1 and rating2",
                     inline=False)
     embed.add_field(name="Answering puzzles",
-                    value=f'{PREFIX}answer [move] --> give your answer to the most recent puzzle. '
-                          f'Use the standard algebraic notation like Qxb7+. You can give your answer in spoiler tags'
-                          f'like this: {PREFIX}answer `||move||`\n'
-                          f'{PREFIX}bestmove --> get the best move to play in the previous puzzle, you can continue '
+                    value=f'`{PREFIX}answer [move]` --> give your answer to the most recent puzzle. '
+                          f'Use the standard algebraic notation like Qxb7+. You can give your answer in spoiler tags '
+                          f'like this: `{PREFIX}answer ||move||`\n'
+                          f'`{PREFIX}bestmove` --> get the best move to play in the previous puzzle, you can continue '
                           f'the puzzle from the next move.')
 
     await context.send(embed=embed)
