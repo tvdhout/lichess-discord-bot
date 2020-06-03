@@ -101,8 +101,8 @@ async def rating(context):
 
     contents = message.content.split()
     if len(contents) == 1:  # !rating
-        await context.send(f"\n{PREFIX}rating [username] --> show all ratings and average rating"
-                                   f"\n{PREFIX}rating [username] [gamemode] --> show rating for a particular gamemode")
+        await context.send(f"\n`{PREFIX}rating [username]` --> show all ratings and average rating"
+                                   f"\n`{PREFIX}rating [username] [gamemode]` --> show rating for a particular gamemode")
         return
 
     param1 = contents[1]
@@ -173,7 +173,7 @@ async def answer(context):
 
     contents = message.content.split()
     if len(contents) == 1:
-        await context.send(f"Give an answer to the most recent puzzle using {PREFIX}answer [move]\n"
+        await context.send(f"Give an answer to the most recent puzzle using `{PREFIX}answer [move]` \n"
                                            "Use the common algebraic notation like Qxb7, R1a5, d4, etc.")
     else:
         await answer_puzzle(context, contents[1])

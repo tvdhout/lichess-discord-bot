@@ -32,7 +32,8 @@ async def show_puzzle(context: Context, puzzle_id: Optional[str] = '') -> None:
                                              database='lichess')
     except mysql.connector.Error as err:
         print(err)
-        await context.send("Oops! I can't connect to the puzzle database. Please contact @stockvis")
+        await context.send("Oops! I can't connect to the puzzle database. Please let me know by filing an issue at "
+                           "https://github.com/tvdhout/Lichess-discord-bot/issues")
         return
 
     cursor = connection.cursor(buffered=True)
@@ -47,9 +48,9 @@ async def show_puzzle(context: Context, puzzle_id: Optional[str] = '') -> None:
     except HTTPError:
         await context.send(f"I can't find a puzzle with puzzle id '{puzzle_id}.'\n"
                                    f"Command usage:\n"
-                                   f"{PREFIX}puzzle -> show a random puzzle\n"
-                                   f"{PREFIX}puzzle [id] -> show a particular puzzle\n"
-                                   f"{PREFIX}puzzle rating1-rating2 -> show a random puzzle with a rating between "
+                                   f"`{PREFIX}puzzle` -> show a random puzzle\n"
+                                   f"`{PREFIX}puzzle [id]` -> show a particular puzzle\n"
+                                   f"`{PREFIX}puzzle rating1-rating2` -> show a random puzzle with a rating between "
                                    f"rating1 and rating2.")
         return
 
@@ -57,9 +58,12 @@ async def show_puzzle(context: Context, puzzle_id: Optional[str] = '') -> None:
 
     cursor.execute(get_puzzle)
     puzzle_id, puzzle_rating, color, answers, follow_ups = cursor.fetchall()[0]
+
+    # Make sure the retrieved contents are lists, as expected, to prevent arbitrary code execution with eval().
     if not (answers.startswith('[') and answers.endswith(']') and
             follow_ups.startswith('[') and follow_ups.endswith(']')):
-        await context.send('Something went wrong loading this puzzle!')
+        await context.send(f'Something went wrong loading this puzzle! ({puzzle_id}). Please let me know by filing an '
+                           f'issue at https://github.com/tvdhout/Lichess-discord-bot/issues')
         return
 
     answers = eval(answers)  # string representation to list
@@ -80,7 +84,7 @@ async def show_puzzle(context: Context, puzzle_id: Optional[str] = '') -> None:
 
     puzzle = discord.File(f'{BASE_DIR}/media/puzzle.png', filename="puzzle.png")  # load puzzle as Discord file
     embed.set_image(url="attachment://puzzle.png")
-    embed.add_field(name=f"Answer with {PREFIX}answer", value="Use the standard algebraic notation, e.g. Qxb7+\n"
+    embed.add_field(name=f"Answer with `{PREFIX}answer`", value="Use the standard algebraic notation, e.g. Qxb7+\n"
                                                               f"Puzzle difficulty rating: ||**{puzzle_rating}**||")
 
     await context.send(file=puzzle, embed=embed)  # send puzzle
@@ -96,8 +100,11 @@ async def show_puzzle(context: Context, puzzle_id: Optional[str] = '') -> None:
     cursor.execute(channel_puzzle, data_puzzle)
     connection.commit()
 
+    # Purge puzzle images
     os.remove(f'{BASE_DIR}/media/puzzle.png')
     os.remove(f'{BASE_DIR}/media/puzzle.gif')
+
+    # Wrap up
     cursor.close()
     connection.disconnect()
 
@@ -113,7 +120,8 @@ async def puzzle_by_rating(context: Context, low: int, high: int):
                                              database='lichess')
     except mysql.connector.Error as err:
         print(err)
-        await context.send("Oops! I can't connect to the puzzle database. Please contact @stockvis")
+        await context.send("Oops! I can't connect to the puzzle database. Please let me know by filing an issue at "
+                           "https://github.com/tvdhout/Lichess-discord-bot/issues")
         return
 
     cursor = connection.cursor(buffered=True)
@@ -146,7 +154,8 @@ async def answer_puzzle(context: Context, answer: str) -> None:
                                              database='lichess')
     except mysql.connector.Error as err:
         print(err)
-        await context.send("Oops! I can't connect to the puzzle database. Please contact @stockvis")
+        await context.send("Oops! I can't connect to the puzzle database. Please let me know by filing an issue at "
+                           "https://github.com/tvdhout/Lichess-discord-bot/issues")
         return
 
     cursor = connection.cursor(buffered=True)
@@ -156,13 +165,15 @@ async def answer_puzzle(context: Context, answer: str) -> None:
     try:
         _, puzzle_id, puzzle_rating, answers, follow_ups = cursor.fetchall()[0]
     except IndexError:
-        await context.send(f"There is no active puzzle in this channel! See {PREFIX}commands on how to start a "
+        await context.send(f"There is no active puzzle in this channel! See `{PREFIX}commands` on how to start a "
                                    f"puzzle")
         return
 
+    # Make sure the retrieved contents are lists, as expected, to prevent arbitrary code execution with eval().
     if not (answers.startswith('[') and answers.endswith(']') and
             follow_ups.startswith('[') and follow_ups.endswith(']')):
-        await context.send('Something went wrong loading this puzzle!')
+        await context.send(f'Something went wrong loading this puzzle! ({puzzle_id}). Please let me know by filing an '
+                           f'issue at https://github.com/tvdhout/Lichess-discord-bot/issues')
         return
 
     answers = eval(answers)  # string representation to list
@@ -177,7 +188,7 @@ async def answer_puzzle(context: Context, answer: str) -> None:
     if len(answers) == 0:
         embed.add_field(name="Oops!",
                         value="I'm sorry. I currently don't have the answers to a puzzle. Please try another "
-                              f"{PREFIX}puzzle")
+                              f"`{PREFIX}puzzle`")
     elif re.sub(r'[|#+]', '', answer.lower()) == re.sub(r'[#+]', '', answers[0].lower()):
         if len(follow_ups) == 0:
             embed.add_field(name="Correct!", value=f"Yes! The best move was {spoiler+answers[0]+spoiler}. "
@@ -188,8 +199,8 @@ async def answer_puzzle(context: Context, answer: str) -> None:
                                                    f"now what's the best move?")
         answers.pop(0)
     else:
-        embed.add_field(name="Wrong!", value=f"{answer} is not the best move. Try again using {PREFIX}"
-                                             f"answer or get the answer with {PREFIX}bestmove")
+        embed.add_field(name="Wrong!", value=f"{answer} is not the best move. Try again using `{PREFIX}"
+                                             f"answer` or get the answer with `{PREFIX}bestmove`")
 
     await context.send(embed=embed)
 
@@ -197,6 +208,7 @@ async def answer_puzzle(context: Context, answer: str) -> None:
                     f"SET answers = %s, follow_ups = %s "
                     f"WHERE channel_id = %s;")
     update_data = (str(answers), str(follow_ups), str(context.message.channel.id))
+
     cursor.execute(update_query, update_data)
     connection.commit()
 
