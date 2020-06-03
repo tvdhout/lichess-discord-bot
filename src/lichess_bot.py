@@ -5,10 +5,14 @@ https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permission
 import discord
 import re
 from discord.ext import commands
+from discord.ext.commands import Context
 import requests  # need to also pip install "requests[security]"
+
 from rating import all_ratings, gamemode_rating
 from puzzle import show_puzzle, answer_puzzle, give_best_move, puzzle_by_rating
 from config import PREFIX, TOKEN
+# from config_dev import PREFIX, TOKEN
+
 
 client = commands.Bot(command_prefix=PREFIX)
 client.remove_command('help')  # remove default help command
@@ -20,7 +24,7 @@ async def on_ready():
 
 
 @client.command(pass_context=True)
-async def commands(context):
+async def commands(context: Context):
     """
     Show list of commands
 
@@ -29,23 +33,23 @@ async def commands(context):
     !commands
     """
     embed = discord.Embed(title=f"Commands", colour=0x00ffff)
-    embed.add_field(name=f"About", value=f"{PREFIX}about --> Show information about this bot", inline=False)
-    embed.add_field(name=f"Rating", value=f"{PREFIX}rating [username] --> show all ratings and average rating"
-                                          f"\n{PREFIX}rating [username] [gamemode] --> show rating for a "
+    embed.add_field(name=f"About", value=f"`{PREFIX}about` --> Show information about this bot", inline=False)
+    embed.add_field(name=f"Rating", value=f"`{PREFIX}rating [username]` --> show all ratings and average rating"
+                                          f"\n`{PREFIX}rating [username] [gamemode]` --> show rating for a "
                                           f"particular gamemode", inline=False)
-    embed.add_field(name=f"Puzzle", value=f"{PREFIX}puzzle --> show a random lichess puzzle to solve"
-                                          f"\n{PREFIX}puzzle [puzzle_id] --> show a particular lichess puzzle\n"
-                                          f"{PREFIX}puzzle [rating1]-[rating2] --> show a random puzzle with a rating "
+    embed.add_field(name=f"Puzzle", value=f"`{PREFIX}puzzle` --> show a random lichess puzzle to solve"
+                                          f"\n`{PREFIX}puzzle [puzzle_id]` --> show a particular lichess puzzle\n"
+                                          f"`{PREFIX}puzzle [rating1]-[rating2]` --> show a random puzzle with a rating "
                                           f"between rating1 and rating2",
                     inline=False)
     embed.add_field(name="Answering puzzles",
-                    value=f'{PREFIX}answer [move] --> give your answer to the most recent puzzle. '
-                          f'Use the standard algebraic notation like Qxb7+. You can give your answer in spoiler tags'
-                          f'like this: {PREFIX}answer `||move||`\n'
-                          f'{PREFIX}bestmove --> get the best move to play in the previous puzzle, you can continue '
+                    value=f'`{PREFIX}answer [move]` --> give your answer to the most recent puzzle. '
+                          f'Use the standard algebraic notation like Qxb7+. You can give your answer in spoiler tags '
+                          f'like this: `{PREFIX}answer ||move||`\n'
+                          f'`{PREFIX}bestmove` --> get the best move to play in the previous puzzle, you can continue '
                           f'the puzzle from the next move.')
 
-    await context.message.channel.send(embed=embed)
+    await context.send(embed=embed)
 
 
 @client.command(pass_context=True)
@@ -77,7 +81,7 @@ async def about(context):
                           f"https://github.com/tvdhout/Lichess-discord-bot. Check out what I can do using "
                           f"{PREFIX}commands.")
 
-    await context.message.channel.send(embed=embed)
+    await context.send(embed=embed)
 
 
 @client.command(pass_context=True)
@@ -97,8 +101,8 @@ async def rating(context):
 
     contents = message.content.split()
     if len(contents) == 1:  # !rating
-        await message.channel.send(f"\n{PREFIX}rating [username] --> show all ratings and average rating"
-                                   f"\n{PREFIX}rating [username] [gamemode] --> show rating for a particular gamemode")
+        await context.send(f"\n`{PREFIX}rating [username]` --> show all ratings and average rating"
+                                   f"\n`{PREFIX}rating [username] [gamemode]` --> show rating for a particular gamemode")
         return
 
     param1 = contents[1]
@@ -113,11 +117,11 @@ async def rating(context):
     try:
         response = requests.get(url)
     except requests.exceptions.ConnectionError:
-        await message.channel.send("Sending too many GET requests to lichess, please wait a minute.")
+        await context.send("Sending too many GET requests to lichess, please wait a minute.")
         return
 
     if response.status_code == 404:
-        await message.channel.send("I can't find any ratings for this user!")
+        await context.send("I can't find any ratings for this user!")
         return
 
     if len(contents) == 2:  # !rating [name/url]
@@ -128,7 +132,7 @@ async def rating(context):
 
 
 @client.command(pass_context=True)
-async def puzzle(context):
+async def puzzle(context: Context):
     """
     Show a lichess puzzle for people to solve
 
@@ -146,11 +150,11 @@ async def puzzle(context):
     if match is not None:  # !puzzle [id]
         low = int(match.group(1))
         high = int(match.group(2))
-        await puzzle_by_rating(message, low, high)
+        await puzzle_by_rating(context, low, high)
     elif len(contents) == 2:
-        await show_puzzle(message, contents[1])
+        await show_puzzle(context, contents[1])
     else:
-        await show_puzzle(message)
+        await show_puzzle(context)
 
 
 @client.command(pass_context=True)
@@ -169,10 +173,10 @@ async def answer(context):
 
     contents = message.content.split()
     if len(contents) == 1:
-        await context.message.channel.send(f"Give an answer to the most recent puzzle using {PREFIX}answer [move]\n"
+        await context.send(f"Give an answer to the most recent puzzle using `{PREFIX}answer [move]` \n"
                                            "Use the common algebraic notation like Qxb7, R1a5, d4, etc.")
     else:
-        await answer_puzzle(message, contents[1])
+        await answer_puzzle(context, contents[1])
 
 
 @client.command(pass_context=True)
@@ -185,7 +189,7 @@ async def bestmove(context):
     !bestmove - Shows the best move for the position in the last shown puzzle. If the puzzle consists of multiple moves
                 the user can continue with the next move.
     """
-    await give_best_move(context.message)
+    await give_best_move(context)
 
 
 if __name__ == '__main__':
