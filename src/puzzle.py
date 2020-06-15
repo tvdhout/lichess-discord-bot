@@ -31,7 +31,6 @@ async def show_puzzle(context: Context, puzzle_id: Optional[str] = '') -> None:
                                              host='localhost',
                                              database='lichess')
     except mysql.connector.Error as err:
-        print(err)
         await context.send("Oops! I can't connect to the puzzle database. Please let me know by filing an issue at "
                            "https://github.com/tvdhout/Lichess-discord-bot/issues")
         return
@@ -46,12 +45,14 @@ async def show_puzzle(context: Context, puzzle_id: Optional[str] = '') -> None:
         wget.download(f'https://lichess1.org/training/export/gif/thumbnail/{puzzle_id}.gif',
                       f'{BASE_DIR}/media/puzzle.gif')
     except HTTPError:
-        await context.send(f"I can't find a puzzle with puzzle id '{puzzle_id}.'\n"
+        embed = discord.Embed(colour=0x00ffff)
+        embed.add_field(name=f"Oops!", value=f"I can't find a puzzle with puzzle id '{puzzle_id}.'\n"
                                    f"Command usage:\n"
                                    f"`{PREFIX}puzzle` -> show a random puzzle\n"
                                    f"`{PREFIX}puzzle [id]` -> show a particular puzzle\n"
                                    f"`{PREFIX}puzzle rating1-rating2` -> show a random puzzle with a rating between "
                                    f"rating1 and rating2.")
+        await context.send(embed=embed)
         return
 
     get_puzzle = f"SELECT * FROM puzzles WHERE puzzle_id = {puzzle_id};"
