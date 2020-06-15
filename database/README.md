@@ -16,3 +16,5 @@ The database contains a table `puzzles` with all the lichess puzzles to date. Pu
 * `follow_up` the response from the opponent to those moves.
 
 The table can be downloaded [as csv](/database/puzzles.csv).
+
+Sorry Lichess for crawling the puzzles, but they are not available through any API.
