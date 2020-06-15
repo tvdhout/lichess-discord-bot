@@ -77,9 +77,11 @@ async def about(context):
                           url='https://github.com/tvdhout/Lichess-discord-bot')
     embed.add_field(name="About me",
                     value=f"I am a bot created by @stockvis and I can obtain various lichess-related "
-                          f"pieces of information for you. You can see how I work here: "
-                          f"https://github.com/tvdhout/Lichess-discord-bot. Check out what I can do using "
-                          f"{PREFIX}commands.")
+                          f"pieces of information for you. You can see how I work "
+                          f"[on the GitHub page](https://github.com/tvdhout/Lichess-discord-bot). "
+                          f"You can invite me to your own server from "
+                          f"[this page](https://top.gg/bot/707287095911120968). "
+                          f"Check out what I can do using `{PREFIX}commands.`")
 
     await context.send(embed=embed)
 
