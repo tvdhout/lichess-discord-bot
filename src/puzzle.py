@@ -1,9 +1,7 @@
-import json
 import discord
 from discord.ext.commands import Context
 import mysql.connector
 
-import requests
 import wget
 import random
 
@@ -31,7 +29,8 @@ async def show_puzzle(context: Context, puzzle_id: Optional[str] = '') -> None:
                                              host='localhost',
                                              database='lichess')
     except mysql.connector.Error as err:
-        await context.send("Oops! I can't connect to the puzzle database. Please let me know by filing an issue at "
+        await context.send("Oops! I can't connect to the puzzle database. This might be because I am working on the "
+                           "database. If the problem persists, please let me know by filing an issue at "
                            "https://github.com/tvdhout/Lichess-discord-bot/issues")
         return
 
@@ -121,7 +120,8 @@ async def puzzle_by_rating(context: Context, low: int, high: int):
                                              database='lichess')
     except mysql.connector.Error as err:
         print(err)
-        await context.send("Oops! I can't connect to the puzzle database. Please let me know by filing an issue at "
+        await context.send("Oops! I can't connect to the puzzle database. This might be because I am working on the "
+                           "database. If the problem persists, please let me know by filing an issue at "
                            "https://github.com/tvdhout/Lichess-discord-bot/issues")
         return
 
@@ -155,7 +155,8 @@ async def answer_puzzle(context: Context, answer: str) -> None:
                                              database='lichess')
     except mysql.connector.Error as err:
         print(err)
-        await context.send("Oops! I can't connect to the puzzle database. Please let me know by filing an issue at "
+        await context.send("Oops! I can't connect to the puzzle database. This might be because I am working on the "
+                           "database. If the problem persists, please let me know by filing an issue at "
                            "https://github.com/tvdhout/Lichess-discord-bot/issues")
         return
 
