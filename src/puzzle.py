@@ -28,10 +28,11 @@ async def show_puzzle(context: Context, puzzle_id: Optional[str] = '') -> None:
         connection = mysql.connector.connect(user='thijs',
                                              host='localhost',
                                              database='lichess')
-    except mysql.connector.Error as err:
+    except mysql.connector.Error:
         await context.send("Oops! I can't connect to the puzzle database. This might be because I am working on the "
                            "database. If the problem persists, please let me know by filing an issue at "
-                           "https://github.com/tvdhout/Lichess-discord-bot/issues")
+                           "https://github.com/tvdhout/Lichess-discord-bot/issues or post in the bot support server: "
+                           "https://discord.gg/xCpCRsp")
         return
 
     cursor = connection.cursor(buffered=True)
@@ -62,8 +63,9 @@ async def show_puzzle(context: Context, puzzle_id: Optional[str] = '') -> None:
     # Make sure the retrieved contents are lists, as expected, to prevent arbitrary code execution with eval().
     if not (answers.startswith('[') and answers.endswith(']') and
             follow_ups.startswith('[') and follow_ups.endswith(']')):
-        await context.send(f'Something went wrong loading this puzzle! ({puzzle_id}). Please let me know by filing an '
-                           f'issue at https://github.com/tvdhout/Lichess-discord-bot/issues')
+        await context.send(f"Something went wrong loading this puzzle! ({puzzle_id}). Please let me know by filing an "
+                           f"issue at https://github.com/tvdhout/Lichess-discord-bot/issues "
+                           f"or post in the bot support server: https://discord.gg/xCpCRsp")
         return
 
     answers = eval(answers)  # string representation to list
@@ -122,7 +124,8 @@ async def puzzle_by_rating(context: Context, low: int, high: int):
         print(err)
         await context.send("Oops! I can't connect to the puzzle database. This might be because I am working on the "
                            "database. If the problem persists, please let me know by filing an issue at "
-                           "https://github.com/tvdhout/Lichess-discord-bot/issues")
+                           "https://github.com/tvdhout/Lichess-discord-bot/issues or post in the bot support server: "
+                           "https://discord.gg/xCpCRsp")
         return
 
     cursor = connection.cursor(buffered=True)
@@ -157,7 +160,8 @@ async def answer_puzzle(context: Context, answer: str) -> None:
         print(err)
         await context.send("Oops! I can't connect to the puzzle database. This might be because I am working on the "
                            "database. If the problem persists, please let me know by filing an issue at "
-                           "https://github.com/tvdhout/Lichess-discord-bot/issues")
+                           "https://github.com/tvdhout/Lichess-discord-bot/issues or post in the bot support server: "
+                           "https://discord.gg/xCpCRsp")
         return
 
     cursor = connection.cursor(buffered=True)
@@ -174,8 +178,9 @@ async def answer_puzzle(context: Context, answer: str) -> None:
     # Make sure the retrieved contents are lists, as expected, to prevent arbitrary code execution with eval().
     if not (answers.startswith('[') and answers.endswith(']') and
             follow_ups.startswith('[') and follow_ups.endswith(']')):
-        await context.send(f'Something went wrong loading this puzzle! ({puzzle_id}). Please let me know by filing an '
-                           f'issue at https://github.com/tvdhout/Lichess-discord-bot/issues')
+        await context.send(f"Something went wrong loading this puzzle! ({puzzle_id}). Please let me know by filing an "
+                           f"issue at https://github.com/tvdhout/Lichess-discord-bot/issues "
+                           f"or post in the bot support server: https://discord.gg/xCpCRsp")
         return
 
     answers = eval(answers)  # string representation to list
@@ -231,7 +236,8 @@ async def give_best_move(context: Context) -> None:
                                              database='lichess')
     except mysql.connector.Error as err:
         print(err)
-        await context.send("Oops! I can't connect to the puzzle database. Please contact @stockvis")
+        await context.send("Oops! I can't connect to the puzzle database. Please report this in the bot support "
+                           "server: https://discord.gg/xCpCRsp or file an issue on GitHub.")
         return
 
     cursor = connection.cursor(buffered=True)
