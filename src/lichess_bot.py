@@ -6,7 +6,7 @@ import discord
 import re
 import dbl
 import config_dev
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ext.commands import Context
 import requests  # need to also pip install "requests[security]"
 
@@ -208,13 +208,20 @@ class TopGG(discord.ext.commands.Cog):
         self.token = TOP_GG_TOKEN
         self.dblpy = dbl.DBLClient(self.bot, self.token, autopost=True)
 
-    @discord.ext.commands.Cog.listener()
-    async def on_guild_post(self):
-        print("Server count posted successfully")
+    @tasks.loop(minutes=30.0)
+    async def update_stats(self):
+        """This function runs every 30 minutes to automatically update your server count"""
+        print('Attempting to post server count')
+        try:
+            await self.dblpy.post_guild_count()
+            print('Posted server count ({})'.format(self.dblpy.guild_count()))
+        except Exception as e:
+            print('Failed to post server count\n{}: {}'.format(type(e).__name__, e))
 
 
 if __name__ == '__main__':
-    if PREFIX != config_dev.PREFIX:
-        print("Attaching Top.gg Cog.")
-        client.add_cog(TopGG(client))
+    # FIXME: request status 400: Bad request when trying to update server count
+    # if PREFIX != config_dev.PREFIX:
+    #     print("Attaching Top.gg Cog")
+    #     client.add_cog(TopGG(client))
     client.run(TOKEN)
