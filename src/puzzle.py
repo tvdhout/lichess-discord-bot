@@ -196,7 +196,7 @@ async def answer_puzzle(context: Context, answer: str) -> None:
         embed.add_field(name="Oops!",
                         value="I'm sorry. I currently don't have the answers to a puzzle. Please try another "
                               f"`{PREFIX}puzzle`")
-    elif re.sub(r'[|#+]', '', answer.lower()) == re.sub(r'[#+]', '', answers[0].lower()):
+    elif re.sub(r'[|#+x]', '', answer.lower()) == re.sub(r'[#+x]', '', answers[0].lower()):
         if len(follow_ups) == 0:
             embed.add_field(name="Correct!", value=f"Yes! The best move was {spoiler+answers[0]+spoiler}. "
                                                    f"You completed the puzzle! (difficulty rating {puzzle_rating})")
