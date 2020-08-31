@@ -12,8 +12,8 @@ from rating import all_ratings, gamemode_rating
 from puzzle import show_puzzle, answer_puzzle, give_best_move, puzzle_by_rating
 from config import PREFIX, TOKEN
 # from config_dev import PREFIX, TOKEN
-
-
+import lichess.api
+# lichess api lib
 client = commands.Bot(command_prefix=PREFIX)
 client.remove_command('help')  # remove default help command
 
@@ -48,6 +48,11 @@ async def commands(context: Context):
                           f'like this: `{PREFIX}answer ||move||`\n'
                           f'`{PREFIX}bestmove` --> get the best move to play in the previous puzzle, you can continue '
                           f'the puzzle from the next move.')
+    embed.add_field(name="Tools",
+                    value=f'`{PREFIX}status [username]` --> show status of the player . '
+                          f'`{PREFIX}export [username]` --> show the export link of the games  '
+                          f'`{PREFIX}team [username]` --> show link of the team')
+
 
     await context.send(embed=embed)
 
@@ -190,6 +195,50 @@ async def bestmove(context):
                 the user can continue with the next move.
     """
     await give_best_move(context)
+
+@client.command()
+async def status(context,username) :
+    url = "https://lichess.org/@/"+username
+    users = list(lichess.api.users_status([username]))
+    online = [u['id'] for u in users if u.get('online')]
+    playing = [u['id'] for u in users if u.get('playing')]
+    request = requests.get(url)
+    if request.status_code == 200:
+        if len(online) == 0 :
+            text = username + " is offline"
+        elif len(playing) == 1 :
+            text = username + " is playing"
+        else :
+            text = username + " is online"
+    else:
+        text = "There is no user called " + username
+    await context.send(text)
+    
+
+@client.command()
+async def export(context,username) :
+    url = "https://lichess.org/@/"+username
+    request = requests.get(url)
+    if request.status_code == 200:
+        downloadlink = "https://lichess.org/api/games/user/"+ username
+        text = f'[Here !]({downloadlink})'
+    else:
+        text = "There is no user called " + username
+    await context.send(text)
+
+
+
+@client.command()
+async def team(context,teamid) :
+    url = "https://lichess.org/team/"+teamid
+    request = requests.get(url)
+    if request.status_code == 200:
+        text = f'[Here !]({url})'
+    else:
+        text = "There is no team called " + teamid
+    await context.send(text)
+
+
 
 
 if __name__ == '__main__':
