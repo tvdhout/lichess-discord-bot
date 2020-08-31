@@ -20,6 +20,9 @@ This bot integrates with the lichess.org chess website. The bot can be used to r
 * `-puzzle [rating1]-[rating2]` --> show a random chess puzzle with a difficulty rating in a range
 * `-answer [move]` --> give an answer to the most recent puzzle shown in the channel
 * `-bestmove` --> ask for the answer for the most recent puzzle shown in the channel. If there are more steps to the puzzle, the user can continue from the next step
+* `-status [username]` --> shows the status of the player (online,offline,playing)
+* `-export [username]` --> shows export link of user
+* `-team [teamid]` --> shows the link of the team
 
 ## Help / Contact / Issues / Requests / Collaboration
 Questions, issues and requests can be posted as an issue in this repository.
