@@ -23,6 +23,7 @@ client.remove_command('help')  # remove default help command
 @client.event
 async def on_ready():
     print('Logged in as {0.user}'.format(client))
+    print("Bot id: ", client.user.id)
 
 
 @client.command(pass_context=True)
@@ -208,20 +209,13 @@ class TopGG(discord.ext.commands.Cog):
         self.token = TOP_GG_TOKEN
         self.dblpy = dbl.DBLClient(self.bot, self.token, autopost=True)
 
-    @tasks.loop(minutes=30.0)
-    async def update_stats(self):
-        """This function runs every 30 minutes to automatically update your server count"""
-        print('Attempting to post server count')
-        try:
-            await self.dblpy.post_guild_count()
-            print('Posted server count ({})'.format(self.dblpy.guild_count()))
-        except Exception as e:
-            print('Failed to post server count\n{}: {}'.format(type(e).__name__, e))
+    async def on_guild_post(self):
+        print("Server count posted successfully")
 
 
 if __name__ == '__main__':
-    # FIXME: request status 400: Bad request when trying to update server count
-    # if PREFIX != config_dev.PREFIX:
-    #     print("Attaching Top.gg Cog")
-    #     client.add_cog(TopGG(client))
+    # FIXME: update server count
+    if PREFIX != config_dev.PREFIX:
+        topgg_cog = TopGG(client)
+        client.add_cog(topgg_cog)
     client.run(TOKEN)
