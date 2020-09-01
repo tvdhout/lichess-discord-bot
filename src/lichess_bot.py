@@ -4,14 +4,16 @@ https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permission
 """
 import discord
 import re
-from discord.ext import commands
+import dbl
+import config_dev
+from discord.ext import commands, tasks
 from discord.ext.commands import Context
 import requests  # need to also pip install "requests[security]"
 
 from rating import all_ratings, gamemode_rating
 from puzzle import show_puzzle, answer_puzzle, give_best_move, puzzle_by_rating
-from config import PREFIX, TOKEN
-# from config_dev import PREFIX, TOKEN
+from config import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration files for stable bot
+# from config_dev import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration for development bot
 
 
 client = commands.Bot(command_prefix=PREFIX)
@@ -21,6 +23,7 @@ client.remove_command('help')  # remove default help command
 @client.event
 async def on_ready():
     print('Logged in as {0.user}'.format(client))
+    print("Bot id: ", client.user.id)
 
 
 @client.command(pass_context=True)
@@ -33,21 +36,23 @@ async def commands(context: Context):
     !commands
     """
     embed = discord.Embed(title=f"Commands", colour=0x00ffff)
+    embed.add_field(name=f"Support", value=f"For help, issues or suggestions, join the "
+                                           f"[bot support server](https://discord.gg/xCpCRsp).", inline=False)
     embed.add_field(name=f"About", value=f"`{PREFIX}about` --> Show information about this bot", inline=False)
     embed.add_field(name=f"Rating", value=f"`{PREFIX}rating [username]` --> show all ratings and average rating"
                                           f"\n`{PREFIX}rating [username] [gamemode]` --> show rating for a "
                                           f"particular gamemode", inline=False)
     embed.add_field(name=f"Puzzle", value=f"`{PREFIX}puzzle` --> show a random lichess puzzle to solve"
                                           f"\n`{PREFIX}puzzle [puzzle_id]` --> show a particular lichess puzzle\n"
-                                          f"`{PREFIX}puzzle [rating1]-[rating2]` --> show a random puzzle with a rating "
-                                          f"between rating1 and rating2",
+                                          f"`{PREFIX}puzzle [rating1]-[rating2]` --> "
+                                          f"show a random puzzle with a rating between rating1 and rating2",
                     inline=False)
     embed.add_field(name="Answering puzzles",
                     value=f'`{PREFIX}answer [move]` --> give your answer to the most recent puzzle. '
                           f'Use the standard algebraic notation like Qxb7+. You can give your answer in spoiler tags '
                           f'like this: `{PREFIX}answer ||move||`\n'
                           f'`{PREFIX}bestmove` --> get the best move to play in the previous puzzle, you can continue '
-                          f'the puzzle from the next move.')
+                          f'the puzzle from the next move.', inline=False)
 
     await context.send(embed=embed)
 
@@ -77,9 +82,13 @@ async def about(context):
                           url='https://github.com/tvdhout/Lichess-discord-bot')
     embed.add_field(name="About me",
                     value=f"I am a bot created by @stockvis and I can obtain various lichess-related "
-                          f"pieces of information for you. You can see how I work here: "
-                          f"https://github.com/tvdhout/Lichess-discord-bot. Check out what I can do using "
-                          f"{PREFIX}commands.")
+                          f"pieces of information for you. You can see how I work "
+                          f"[on the GitHub page](https://github.com/tvdhout/Lichess-discord-bot). "
+                          f"You can invite me to your own server from "
+                          f"[this page](https://top.gg/bot/707287095911120968). "
+                          f"Check out what I can do using `{PREFIX}commands.` "
+                          f"Any issues or suggestions can be posted in the "
+                          f"[bot support server](https://discord.gg/xCpCRsp).")
 
     await context.send(embed=embed)
 
@@ -102,7 +111,7 @@ async def rating(context):
     contents = message.content.split()
     if len(contents) == 1:  # !rating
         await context.send(f"\n`{PREFIX}rating [username]` --> show all ratings and average rating"
-                                   f"\n`{PREFIX}rating [username] [gamemode]` --> show rating for a particular gamemode")
+                            f"\n`{PREFIX}rating [username] [gamemode]` --> show rating for a particular gamemode")
         return
 
     param1 = contents[1]
@@ -117,11 +126,11 @@ async def rating(context):
     try:
         response = requests.get(url)
     except requests.exceptions.ConnectionError:
-        await context.send("Sending too many GET requests to lichess, please wait a minute.")
+        await context.send("Sending too many GET requests to lichess, please wait a minute and try again!")
         return
 
     if response.status_code == 404:
-        await context.send("I can't find any ratings for this user!")
+        await context.send("I can't find any ratings for this lichess username!")
         return
 
     if len(contents) == 2:  # !rating [name/url]
@@ -192,5 +201,21 @@ async def bestmove(context):
     await give_best_move(context)
 
 
+class TopGG(discord.ext.commands.Cog):
+    """Handles interactions with the top.gg API"""
+
+    def __init__(self, bot):
+        self.bot = bot
+        self.token = TOP_GG_TOKEN
+        self.dblpy = dbl.DBLClient(self.bot, self.token, autopost=True)
+
+    async def on_guild_post(self):
+        print("Server count posted successfully")
+
+
 if __name__ == '__main__':
+    # FIXME: update server count
+    if PREFIX != config_dev.PREFIX:
+        topgg_cog = TopGG(client)
+        client.add_cog(topgg_cog)
     client.run(TOKEN)

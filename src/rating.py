@@ -45,13 +45,13 @@ async def all_ratings(message: discord.message.Message, response: requests.Respo
                 if rating.endswith('?'):  # provisional rating
                     provisional = True
                     rating = rating[:-1]  # remove question mark to cast to int
-                ratings_list.append(int(rating))
+                ratings_list.append((int(rating), int(n_games.split()[0])))
             else:
                 if not avg_only:
                     embed.add_field(name=gamemode, value=f'{rating} ({n_games})', inline=True)
 
-    average_rating = np.mean(ratings_list)
-    embed.add_field(name='Average rating (Bullet, Blitz, Rapid, Classical)',
+    average_rating = int(np.average([x[0] for x in ratings_list], weights=[x[1] for x in ratings_list]))
+    embed.add_field(name='Average rating weighted by number of games (Bullet, Blitz, Rapid, Classical)',
                     value=f'**{average_rating}{"?" if provisional else ""}**', inline=False)
 
     await message.channel.send(embed=embed)
