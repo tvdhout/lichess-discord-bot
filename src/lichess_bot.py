@@ -9,6 +9,8 @@ import config_dev
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 import requests  # need to also pip install "requests[security]"
+from bs4 import BeautifulSoup
+import lichess.api
 
 from rating import all_ratings, gamemode_rating
 from puzzle import show_puzzle, answer_puzzle, give_best_move, puzzle_by_rating
@@ -199,7 +201,53 @@ async def bestmove(context):
                 the user can continue with the next move.
     """
     await give_best_move(context)
-
+@client.command()
+async def profile(message,username):
+    channel = message.channel
+    url = "https://lichess.org/@/"+username
+    validation = requests.get(url)
+    users = list(lichess.api.users_status([username]))
+    online = [u['id'] for u in users if u.get('online')]
+    playing = [u['id'] for u in users if u.get('playing')]
+    if validation.status_code == 200:
+        if len(online) == 0 :
+            status = "offline"
+        elif len(playing) == 1 :
+            status = "playing"
+        else :
+            status = "online"
+        export_link = "https://lichess.org/api/games/user/"+ username
+        reponse = requests.get(url)
+        html_soup = BeautifulSoup(reponse.text,"html.parser")
+        country = html_soup.find("span",class_ = "country")
+        print(country)
+        if country == None :
+            country = "Not defined"
+        else :
+            country = country.text
+            country = country[1:]
+        followers = html_soup.find("a",class_ = "nm-item")
+        followers = followers.text
+        followers = followers[0:len(followers)-9]
+        tournament_stats = html_soup.find("a",class_ = "nm-item tournament_stats")
+        tournament_stats = tournament_stats.text
+        tournament_stats = tournament_stats[0:len(tournament_stats)-17]
+        games = html_soup.find("a",class_ = "nm-item to-games")
+        games = games.text
+        img_url = html_soup.find("img",class_ = "flag")
+        if img_url == None :
+            img_url = "https://cutewallpaper.org/21/discord-background-color-hex/HEXColorCodes-323232-color-hex-HEXColorCodes-323232-.jpg"
+        else :
+            img_url = img_url["src"]
+        embed=discord.Embed()
+        embed.set_thumbnail(url=img_url)
+        embed.add_field(name="Profile", value=f"username: {username}"+"\n"+f"nationality: {country}"+"\n"+f"followers: {followers}"+"\n"+f"tournament stats: {tournament_stats} points", inline=True)
+        embed.add_field(name="Status", value=status, inline=True)
+        embed.add_field(name="Export Games", value=f'[Click here]({export_link})', inline=False)
+        await channel.send(embed=embed)
+    else :
+        await channel.send("No member called "+username)
+        
 
 class TopGG(discord.ext.commands.Cog):
     """Handles interactions with the top.gg API"""
