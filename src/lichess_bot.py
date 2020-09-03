@@ -6,17 +6,15 @@ import discord
 import re
 import dbl
 import config_dev
-from discord.ext import commands, tasks
+from discord.ext import commands
 from discord.ext.commands import Context
-import requests  # need to also pip install "requests[security]"
-from bs4 import BeautifulSoup
 import lichess.api
 
+from profile import show_profile
 from rating import all_ratings, gamemode_rating
 from puzzle import show_puzzle, answer_puzzle, give_best_move, puzzle_by_rating
-from config import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration files for stable bot
-# from config_dev import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration for development bot
-
+# from config import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration files for stable bot
+from config_dev import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration for development bot
 
 client = commands.Bot(command_prefix=PREFIX)
 client.remove_command('help')  # remove default help command
@@ -55,6 +53,8 @@ async def commands(context: Context):
                           f'like this: `{PREFIX}answer ||move||`\n'
                           f'`{PREFIX}bestmove` --> get the best move to play in the previous puzzle, you can continue '
                           f'the puzzle from the next move.', inline=False)
+    embed.add_field(name="Profile",
+                    value=f'`{PREFIX}profile [move]` --> show a lichess user profile.', inline=False)
 
     await context.send(embed=embed)
 
@@ -102,44 +102,32 @@ async def rating(context):
 
     _________
     Usage:
-    !rating [username / url to lichess page] - Retrieves the rating for user in every gamemode, with an average
-    !rating [username / url] [gamemode] - Retrieves the rating for user in a particular gamemode
-    !rating [username / url] average - Retrieves the average rating over Bullet, Blitz, Rapid and Classical
+    !rating [username] - Retrieves the rating for user in every gamemode, with an average
+    !rating [username] [gamemode] - Retrieves the rating for user in a particular gamemode
+    !rating [username] average - Retrieves the average rating over Bullet, Blitz, Rapid and Classical
     """
     message = context.message
     if message.author == client.user:
         return
 
     contents = message.content.split()
-    if len(contents) == 1:  # !rating
+    if len(contents) == 1:  # !rating TODO: use linked profile
         await context.send(f"\n`{PREFIX}rating [username]` --> show all ratings and average rating"
-                            f"\n`{PREFIX}rating [username] [gamemode]` --> show rating for a particular gamemode")
+                           f"\n`{PREFIX}rating [username] [gamemode]` --> show rating for a particular gamemode")
         return
 
-    param1 = contents[1]
-    match = re.match(r'(?:https://)?(?:www\.)?lichess\.org/@/([\S]+)/?', param1)
-    if match:  # user provided a link to their lichess page
-        url = match.string
-        name = match.groups()[0]
-    else:  # user provided their username
-        url = f'https://lichess.org/@/{param1}'
-        name = param1
-
+    username = contents[1]
     try:
-        response = requests.get(url)
-    except requests.exceptions.ConnectionError:
-        await context.send("Sending too many GET requests to lichess, please wait a minute and try again!")
-        return
-
-    if response.status_code == 404:
-        await context.send("I can't find any ratings for this lichess username!")
+        user = lichess.api.user(username)
+    except lichess.api.ApiHttpError:
+        await message.channel.send("This username does not exist!")
         return
 
     if len(contents) == 2:  # !rating [name/url]
-        await all_ratings(message, response, name)
+        await all_ratings(message, user)
     elif len(contents) > 2:  # !rating [name/url] [gamemode]
         gamemode = contents[2]
-        await gamemode_rating(message, response, name, gamemode)
+        await gamemode_rating(message, user, gamemode)
 
 
 @client.command(pass_context=True)
@@ -155,7 +143,7 @@ async def puzzle(context: Context):
     message = context.message
     if message.author == client.user:
         return
-    prefix = '\\'+PREFIX if PREFIX in '*+()&^$[]{}\\.' else PREFIX  # escape prefix character to not break the regex
+    prefix = '\\' + PREFIX if PREFIX in '*+()&^$[]{}\\.' else PREFIX  # escape prefix character to not break the regex
     match = re.match(rf'^{prefix}puzzle +(\d+) *[ _\-] *(\d+)$', message.content)
     contents = message.content.split()
     if match is not None:  # !puzzle [id]
@@ -185,7 +173,7 @@ async def answer(context):
     contents = message.content.split()
     if len(contents) == 1:
         await context.send(f"Give an answer to the most recent puzzle using `{PREFIX}answer [move]` \n"
-                                           "Use the common algebraic notation like Qxb7, R1a5, d4, etc.")
+                           "Use the common algebraic notation like Qxb7, R1a5, d4, etc.")
     else:
         await answer_puzzle(context, contents[1])
 
@@ -201,53 +189,13 @@ async def bestmove(context):
                 the user can continue with the next move.
     """
     await give_best_move(context)
+
+
 @client.command()
-async def profile(message,username):
-    channel = message.channel
-    url = "https://lichess.org/@/"+username
-    validation = requests.get(url)
-    users = list(lichess.api.users_status([username]))
-    online = [u['id'] for u in users if u.get('online')]
-    playing = [u['id'] for u in users if u.get('playing')]
-    if validation.status_code == 200:
-        if len(online) == 0 :
-            status = "offline"
-        elif len(playing) == 1 :
-            status = "playing"
-        else :
-            status = "online"
-        export_link = "https://lichess.org/api/games/user/"+ username
-        reponse = requests.get(url)
-        html_soup = BeautifulSoup(reponse.text,"html.parser")
-        country = html_soup.find("span",class_ = "country")
-        print(country)
-        if country == None :
-            country = "Not defined"
-        else :
-            country = country.text
-            country = country[1:]
-        followers = html_soup.find("a",class_ = "nm-item")
-        followers = followers.text
-        followers = followers[0:len(followers)-9]
-        tournament_stats = html_soup.find("a",class_ = "nm-item tournament_stats")
-        tournament_stats = tournament_stats.text
-        tournament_stats = tournament_stats[0:len(tournament_stats)-17]
-        games = html_soup.find("a",class_ = "nm-item to-games")
-        games = games.text
-        img_url = html_soup.find("img",class_ = "flag")
-        if img_url == None :
-            img_url = "https://cutewallpaper.org/21/discord-background-color-hex/HEXColorCodes-323232-color-hex-HEXColorCodes-323232-.jpg"
-        else :
-            img_url = img_url["src"]
-        embed=discord.Embed()
-        embed.set_thumbnail(url=img_url)
-        embed.add_field(name="Profile", value=f"username: {username}"+"\n"+f"nationality: {country}"+"\n"+f"followers: {followers}"+"\n"+f"tournament stats: {tournament_stats} points", inline=True)
-        embed.add_field(name="Status", value=status, inline=True)
-        embed.add_field(name="Export Games", value=f'[Click here]({export_link})', inline=False)
-        await channel.send(embed=embed)
-    else :
-        await channel.send("No member called "+username)
-        
+async def profile(message, username):
+    # TODO: optional username, use linked profile
+    await show_profile(message, username)
+
 
 class TopGG(discord.ext.commands.Cog):
     """Handles interactions with the top.gg API"""
