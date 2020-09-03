@@ -14,9 +14,8 @@ import lichess.api
 
 from rating import all_ratings, gamemode_rating
 from puzzle import show_puzzle, answer_puzzle, give_best_move, puzzle_by_rating
-from config import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration files for stable bot
-# from config_dev import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration for development bot
-
+# from config import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration files for stable bot
+from config_dev import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration for development bot
 
 client = commands.Bot(command_prefix=PREFIX)
 client.remove_command('help')  # remove default help command
@@ -113,7 +112,7 @@ async def rating(context):
     contents = message.content.split()
     if len(contents) == 1:  # !rating
         await context.send(f"\n`{PREFIX}rating [username]` --> show all ratings and average rating"
-                            f"\n`{PREFIX}rating [username] [gamemode]` --> show rating for a particular gamemode")
+                           f"\n`{PREFIX}rating [username] [gamemode]` --> show rating for a particular gamemode")
         return
 
     param1 = contents[1]
@@ -155,7 +154,7 @@ async def puzzle(context: Context):
     message = context.message
     if message.author == client.user:
         return
-    prefix = '\\'+PREFIX if PREFIX in '*+()&^$[]{}\\.' else PREFIX  # escape prefix character to not break the regex
+    prefix = '\\' + PREFIX if PREFIX in '*+()&^$[]{}\\.' else PREFIX  # escape prefix character to not break the regex
     match = re.match(rf'^{prefix}puzzle +(\d+) *[ _\-] *(\d+)$', message.content)
     contents = message.content.split()
     if match is not None:  # !puzzle [id]
@@ -185,7 +184,7 @@ async def answer(context):
     contents = message.content.split()
     if len(contents) == 1:
         await context.send(f"Give an answer to the most recent puzzle using `{PREFIX}answer [move]` \n"
-                                           "Use the common algebraic notation like Qxb7, R1a5, d4, etc.")
+                           "Use the common algebraic notation like Qxb7, R1a5, d4, etc.")
     else:
         await answer_puzzle(context, contents[1])
 
@@ -201,53 +200,59 @@ async def bestmove(context):
                 the user can continue with the next move.
     """
     await give_best_move(context)
+
+
 @client.command()
-async def profile(message,username):
+async def profile(message, username=None):
+    if username is None:
+        username = 'stockvis'
     channel = message.channel
-    url = "https://lichess.org/@/"+username
+    url = "https://lichess.org/@/" + username
     validation = requests.get(url)
     users = list(lichess.api.users_status([username]))
     online = [u['id'] for u in users if u.get('online')]
     playing = [u['id'] for u in users if u.get('playing')]
     if validation.status_code == 200:
-        if len(online) == 0 :
+        if len(online) == 0:
             status = "offline"
-        elif len(playing) == 1 :
+        elif len(playing) == 1:
             status = "playing"
-        else :
+        else:
             status = "online"
-        export_link = "https://lichess.org/api/games/user/"+ username
+        export_link = "https://lichess.org/api/games/user/" + username
         reponse = requests.get(url)
-        html_soup = BeautifulSoup(reponse.text,"html.parser")
-        country = html_soup.find("span",class_ = "country")
+        html_soup = BeautifulSoup(reponse.text, "html.parser")
+        country = html_soup.find("span", class_="country")
         print(country)
-        if country == None :
+        if country == None:
             country = "Not defined"
-        else :
+        else:
             country = country.text
             country = country[1:]
-        followers = html_soup.find("a",class_ = "nm-item")
+        followers = html_soup.find("a", class_="nm-item")
         followers = followers.text
-        followers = followers[0:len(followers)-9]
-        tournament_stats = html_soup.find("a",class_ = "nm-item tournament_stats")
+        followers = followers[0:len(followers) - 9]
+        tournament_stats = html_soup.find("a", class_="nm-item tournament_stats")
         tournament_stats = tournament_stats.text
-        tournament_stats = tournament_stats[0:len(tournament_stats)-17]
-        games = html_soup.find("a",class_ = "nm-item to-games")
+        tournament_stats = tournament_stats[0:len(tournament_stats) - 17]
+        games = html_soup.find("a", class_="nm-item to-games")
         games = games.text
-        img_url = html_soup.find("img",class_ = "flag")
-        if img_url == None :
+        img_url = html_soup.find("img", class_="flag")
+        if img_url == None:
             img_url = "https://cutewallpaper.org/21/discord-background-color-hex/HEXColorCodes-323232-color-hex-HEXColorCodes-323232-.jpg"
-        else :
+        else:
             img_url = img_url["src"]
-        embed=discord.Embed()
+        embed = discord.Embed()
         embed.set_thumbnail(url=img_url)
-        embed.add_field(name="Profile", value=f"username: {username}"+"\n"+f"nationality: {country}"+"\n"+f"followers: {followers}"+"\n"+f"tournament stats: {tournament_stats} points", inline=True)
+        embed.add_field(name="Profile",
+                        value=f"username: {username}" + "\n" + f"nationality: {country}" + "\n" + f"followers: {followers}" + "\n" + f"tournament stats: {tournament_stats} points",
+                        inline=True)
         embed.add_field(name="Status", value=status, inline=True)
         embed.add_field(name="Export Games", value=f'[Click here]({export_link})', inline=False)
         await channel.send(embed=embed)
-    else :
-        await channel.send("No member called "+username)
-        
+    else:
+        await channel.send("No member called " + username)
+
 
 class TopGG(discord.ext.commands.Cog):
     """Handles interactions with the top.gg API"""
