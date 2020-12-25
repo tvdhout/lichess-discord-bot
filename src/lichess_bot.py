@@ -13,8 +13,8 @@ import lichess.api
 from profile import show_profile
 from rating import all_ratings, gamemode_rating
 from puzzle import show_puzzle, answer_puzzle, give_best_move, puzzle_by_rating
-# from config import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration files for stable bot
-from config_dev import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration for development bot
+from config import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration files for stable bot
+# from config_dev import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration for development bot
 
 client = commands.Bot(command_prefix=PREFIX)
 client.remove_command('help')  # remove default help command
@@ -54,7 +54,7 @@ async def commands(context: Context):
                           f'`{PREFIX}bestmove` --> get the best move to play in the previous puzzle, you can continue '
                           f'the puzzle from the next move.', inline=False)
     embed.add_field(name="Profile",
-                    value=f'`{PREFIX}profile [move]` --> show a lichess user profile.', inline=False)
+                    value=f'`{PREFIX}profile [username]` --> show a lichess user profile.', inline=False)
 
     await context.send(embed=embed)
 
@@ -140,20 +140,30 @@ async def puzzle(context: Context):
     !puzzle - Shows a random puzzle
     !puzzle [id] - Shows a specific puzzle (https://lichess.org/training/[id])
     """
-    message = context.message
-    if message.author == client.user:
-        return
-    prefix = '\\' + PREFIX if PREFIX in '*+()&^$[]{}\\.' else PREFIX  # escape prefix character to not break the regex
-    match = re.match(rf'^{prefix}puzzle +(\d+) *[ _\-] *(\d+)$', message.content)
-    contents = message.content.split()
-    if match is not None:  # !puzzle [id]
-        low = int(match.group(1))
-        high = int(match.group(2))
-        await puzzle_by_rating(context, low, high)
-    elif len(contents) == 2:
-        await show_puzzle(context, contents[1])
-    else:
-        await show_puzzle(context)
+
+    embed = discord.Embed(title=f"Puzzle system updated", colour=0x00ffff)
+    embed.add_field(name="Temporarily out of Service",
+                    value=f"The Lichess puzzle system was recently updated. The puzzle commands will be inactive "
+                          f"until I have updated the bot to accomodate these changes. Thank you for your understanding.")
+
+    await context.send(embed=embed)
+
+    # TEMPORARY - FIXME
+
+    # message = context.message
+    # if message.author == client.user:
+    #     return
+    # prefix = '\\' + PREFIX if PREFIX in '*+()&^$[]{}\\.' else PREFIX  # escape prefix character to not break the regex
+    # match = re.match(rf'^{prefix}puzzle +(\d+) *[ _\-] *(\d+)$', message.content)
+    # contents = message.content.split()
+    # if match is not None:  # !puzzle [id]
+    #     low = int(match.group(1))
+    #     high = int(match.group(2))
+    #     await puzzle_by_rating(context, low, high)
+    # elif len(contents) == 2:
+    #     await show_puzzle(context, contents[1])
+    # else:
+    #     await show_puzzle(context)
 
 
 @client.command(pass_context=True)
@@ -166,16 +176,26 @@ async def answer(context):
     !answer [move] - Provide [move] as the best move for the position in the last shown puzzle. Provide moves in the
                      standard algebraic notation (Qxb7+, e4, Bxb2 etc). Check (+) and checkmate (#) notation is optional
     """
-    message = context.message
-    if message.author == client.user:
-        return
 
-    contents = message.content.split()
-    if len(contents) == 1:
-        await context.send(f"Give an answer to the most recent puzzle using `{PREFIX}answer [move]` \n"
-                           "Use the common algebraic notation like Qxb7, R1a5, d4, etc.")
-    else:
-        await answer_puzzle(context, contents[1])
+    embed = discord.Embed(title=f"Puzzle system updated", colour=0x00ffff)
+    embed.add_field(name="Temporarily out of Service",
+                    value=f"The Lichess puzzle system was recently updated. The puzzle commands will be inactive "
+                          f"until I have updated the bot to accomodate these changes. Thank you for your understanding.")
+
+    await context.send(embed=embed)
+
+    # TEMPORARY - FIXME
+
+    # message = context.message
+    # if message.author == client.user:
+    #     return
+    #
+    # contents = message.content.split()
+    # if len(contents) == 1:
+    #     await context.send(f"Give an answer to the most recent puzzle using `{PREFIX}answer [move]` \n"
+    #                        "Use the common algebraic notation like Qxb7, R1a5, d4, etc.")
+    # else:
+    #     await answer_puzzle(context, contents[1])
 
 
 @client.command(pass_context=True)
@@ -188,7 +208,14 @@ async def bestmove(context):
     !bestmove - Shows the best move for the position in the last shown puzzle. If the puzzle consists of multiple moves
                 the user can continue with the next move.
     """
-    await give_best_move(context)
+    embed = discord.Embed(title=f"Puzzle system updated", colour=0x00ffff)
+    embed.add_field(name="Temporarily out of Service",
+                    value=f"The Lichess puzzle system was recently updated. The puzzle commands will be inactive "
+                          f"until I have updated the bot to accomodate these changes. Thank you for your understanding.")
+
+    await context.send(embed=embed)
+
+    # await give_best_move(context)
 
 
 @client.command()

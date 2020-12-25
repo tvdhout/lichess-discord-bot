@@ -129,7 +129,7 @@ async def puzzle_by_rating(context: Context, low: int, high: int):
         return
 
     cursor = connection.cursor(buffered=True)
-    get_puzzle = (f"SELECT puzzle_id FROM puzzles WHERE rating BETWEEN {low} AND {high}")
+    get_puzzle = f"SELECT puzzle_id FROM puzzles WHERE rating BETWEEN {low} AND {high}"
     cursor.execute(get_puzzle)
     try:
         puzzle_id = random.choice(cursor.fetchall())[0]
@@ -166,7 +166,7 @@ async def answer_puzzle(context: Context, answer: str) -> None:
 
     cursor = connection.cursor(buffered=True)
 
-    get_puzzle = (f"SELECT * FROM channel_puzzles WHERE channel_id = {str(context.message.channel.id)};")
+    get_puzzle = f"SELECT * FROM channel_puzzles WHERE channel_id = {str(context.message.channel.id)};"
     cursor.execute(get_puzzle)
     try:
         _, puzzle_id, puzzle_rating, answers, follow_ups = cursor.fetchall()[0]
@@ -242,7 +242,7 @@ async def give_best_move(context: Context) -> None:
 
     cursor = connection.cursor(buffered=True)
 
-    get_puzzle = (f"SELECT * FROM channel_puzzles WHERE channel_id = {str(context.message.channel.id)};")
+    get_puzzle = f"SELECT * FROM channel_puzzles WHERE channel_id = {str(context.message.channel.id)};"
     cursor.execute(get_puzzle)
     try:
         _, puzzle_id, puzzle_rating, answers, follow_ups = cursor.fetchall()[0]
