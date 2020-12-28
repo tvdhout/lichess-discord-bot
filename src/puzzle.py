@@ -11,7 +11,8 @@ from typing import Optional
 
 from config import PREFIX, BASE_DIR
 from urllib.error import HTTPError
-from PIL import Image
+import chess
+from cairosvg import svg2png
 
 
 async def show_puzzle(context: Context, puzzle_id: Optional[str] = '') -> None:
@@ -38,27 +39,25 @@ async def show_puzzle(context: Context, puzzle_id: Optional[str] = '') -> None:
     cursor = connection.cursor(buffered=True)
 
     if puzzle_id == '':
-        cursor.execute(f"SELECT puzzle_id from puzzles ORDER BY RAND() LIMIT 1;")
+        cursor.execute(f"SELECT PuzzleId from puzzles ORDER BY RAND() LIMIT 1;")
         puzzle_id = cursor.fetchall()[0][0]  # random puzzle ID
 
-    try:  # Download the puzzle image
-        wget.download(f'https://lichess1.org/training/export/gif/thumbnail/{puzzle_id}.gif',
-                      f'{BASE_DIR}/media/puzzle.gif')
-    except HTTPError:
-        embed = discord.Embed(colour=0x00ffff)
-        embed.add_field(name=f"Oops!", value=f"I can't find a puzzle with puzzle id '{puzzle_id}.'\n"
-                                   f"Command usage:\n"
-                                   f"`{PREFIX}puzzle` -> show a random puzzle\n"
-                                   f"`{PREFIX}puzzle [id]` -> show a particular puzzle\n"
-                                   f"`{PREFIX}puzzle rating1-rating2` -> show a random puzzle with a rating between "
-                                   f"rating1 and rating2.")
-        await context.send(embed=embed)
-        return
 
-    get_puzzle = f"SELECT * FROM puzzles WHERE puzzle_id = {puzzle_id};"
+    get_puzzle = f"SELECT (FEN, Moves, Rating, Themes) FROM puzzles WHERE PuzzleId = {puzzle_id};"
 
     cursor.execute(get_puzzle)
-    puzzle_id, puzzle_rating, color, answers, follow_ups = cursor.fetchall()[0]
+    try:
+        FEN, moves, rating, themes = cursor.fetchall()[0]
+    except IndexError:
+        embed = discord.Embed(colour=0x00ffff)
+        embed.add_field(name=f"Oops!", value=f"I can't find a puzzle with puzzle id '{puzzle_id}.'\n"
+                                             f"Command usage:\n"
+                                             f"`{PREFIX}puzzle` -> show a random puzzle\n"
+                                             f"`{PREFIX}puzzle [id]` -> show a particular puzzle\n"
+                                             f"`{PREFIX}puzzle rating1-rating2` -> show a random puzzle with a rating between "
+                                             f"rating1 and rating2.")
+        await context.send(embed=embed)
+        return
 
     # Make sure the retrieved contents are lists, as expected, to prevent arbitrary code execution with eval().
     if not (answers.startswith('[') and answers.endswith(']') and
@@ -71,12 +70,6 @@ async def show_puzzle(context: Context, puzzle_id: Optional[str] = '') -> None:
     answers = eval(answers)  # string representation to list
     follow_ups = eval(follow_ups)  # string representation to list
 
-    # Add board coordinates overlay
-    board = Image.open(f'{BASE_DIR}/media/puzzle.gif').convert('RGBA')
-    coordinates = Image.open(f'{BASE_DIR}/media/{color}coords.png')
-
-    board = Image.alpha_composite(board, coordinates)  # overlay coordinates
-    board.save(f'{BASE_DIR}/media/puzzle.png', 'PNG')
 
     # Create embedding for the puzzle to sit in
     embed = discord.Embed(title=f"Find the best move for {color}!\n(puzzle {puzzle_id})",
