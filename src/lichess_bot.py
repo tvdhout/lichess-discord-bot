@@ -13,8 +13,8 @@ import lichess.api
 from profile import show_profile
 from rating import all_ratings, gamemode_rating
 from puzzle import show_puzzle, answer_puzzle, give_best_move, puzzle_by_rating
-# from config import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration files for stable bot
-from config_dev import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration for development bot
+from config import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration files for stable bot
+# from config_dev import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration for development bot
 
 client = commands.Bot(command_prefix=PREFIX)
 client.remove_command('help')  # remove default help command
@@ -148,12 +148,10 @@ async def puzzle(context: Context):
 
     await context.send(embed=embed)
 
-    # TEMPORARY - FIXME
-
     # message = context.message
     # if message.author == client.user:
     #     return
-    # prefix = '\\' + PREFIX if PREFIX in '*+()&^$[]{}\\.' else PREFIX  # escape prefix character to not break the regex
+    # prefix = '\\' + PREFIX if PREFIX in '*+()&^$[]{}?\\.' else PREFIX  # escape prefix character to not break the regex
     # match = re.match(rf'^{prefix}puzzle +(\d+) *[ _\-] *(\d+)$', message.content)
     # contents = message.content.split()
     # if match is not None:  # -puzzle [id]
