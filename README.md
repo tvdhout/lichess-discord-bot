@@ -23,7 +23,7 @@ This bot integrates with the lichess.org chess website. The bot can be used to r
 * `-profile [username]` --> to get public profile information
 
 ## Help / Contact / Issues / Requests / Collaboration
-Questions, issues and requests can be posted as an issue in this repository.
+Questions, issues and requests can be posted as an issue in this repository, or posted in the [discord support server](https://discord.gg/xCpCRsp)
 
 ## Screenshots
 ![Puzzle command screenshot](/media/puzzle_example.png)
