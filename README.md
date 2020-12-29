@@ -26,9 +26,13 @@ This bot integrates with the lichess.org chess website. The bot can be used to r
 Questions, issues and requests can be posted as an issue in this repository.
 
 ## Screenshots
-![Puzzle command screenshot](/media/puzzle_command.png)
+![Puzzle command screenshot](/media/puzzle_example.png)
 
-![Answer command screenshot](/media/answer_command.png)
+![Answer command screenshot](/media/bestmove_example.png)
 
-![Rating command screenshot](/media/rating_command.png)
+![Rating command screenshot](/media/rating_example.png)
+
+![Profile command screenshot](/media/profile_example.png)
+
+![Help command screenshot](/media/help_example.png)
 
