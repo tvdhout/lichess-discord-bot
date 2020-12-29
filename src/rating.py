@@ -45,6 +45,8 @@ async def all_ratings(message: discord.message.Message, user: dict, avg_only: bo
                                                           f"{'puzzles' if mode == 'puzzle' else 'games'})",
                             inline=True)
 
+    if sum(average_weights) == 0:
+        average_weights = [1] * len(average_weights)
     average_rating = int(np.average(ratings_to_average, weights=average_weights))
     embed.add_field(name='Average rating weighted by number of games (Bullet, Blitz, Rapid, Classical)',
                     value=f'**{average_rating}{"?" if average_provisional else ""}**', inline=False)
