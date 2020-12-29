@@ -3,17 +3,13 @@ from discord.ext.commands import Context
 import mysql.connector
 
 import random
-
 import re
 import os
-from typing import Optional
 
 from config import PREFIX, BASE_DIR
-from urllib.error import HTTPError
 import chess
 from chess import svg
-# from cairosvg import svg2png
-# https://gyazo.com/19e13e2459f92dd4e7b9cee749cb5982
+from cairosvg import svg2png
 
 
 async def show_puzzle(context: Context, puzzle_id: str = '') -> None:
@@ -43,12 +39,13 @@ async def show_puzzle(context: Context, puzzle_id: str = '') -> None:
         cursor.execute(f"SELECT PuzzleId from puzzles ORDER BY RAND() LIMIT 1;")
         puzzle_id = cursor.fetchall()[0][0]  # random puzzle ID
 
-    get_puzzle = f"SELECT (FEN, Moves, Rating, Themes) FROM puzzles WHERE PuzzleId = {puzzle_id};"
+    get_puzzle = f"SELECT FEN, Moves, Rating, Themes FROM puzzles WHERE PuzzleId = '{puzzle_id}';"
 
     cursor.execute(get_puzzle)
 
     try:
-        FEN, moves, rating, themes = cursor.fetchall()[0]
+        fen, moves, rating, themes = cursor.fetchall()[0]
+        moves = moves.split()
     except IndexError:
         embed = discord.Embed(colour=0x00ffff)
         embed.add_field(name=f"Oops!", value=f"I can't find a puzzle with puzzle id '{puzzle_id}.'\n"
@@ -60,15 +57,22 @@ async def show_puzzle(context: Context, puzzle_id: str = '') -> None:
         await context.send(embed=embed)
         return
 
-    board = chess.Board(FEN)
-    color = 'white' if board.turn else 'black'
+    # Play the initial move that starts the puzzle
+    board = chess.Board(fen)
+    initial_move_uci = moves.pop(0)
+    move = board.parse_uci(initial_move_uci)
+    initial_move_san = board.san(move)
+    board.push(move)
+    fen = board.fen()
+    color = 'white' if ' w ' in fen else 'black'
 
-    image = svg.board(board, colors={'square light': '#f2d0a2', 'square dark': '#aa7249'})
+    image = svg.board(board, lastmove=move, colors={'square light': '#f2d0a2', 'square dark': '#aa7249'},
+                      flipped=(color == 'black'))
     # Save puzzle image
     svg2png(bytestring=str(image), write_to=f'{BASE_DIR}/media/puzzle.png', parent_width=1000, parent_height=1000)
 
     # Create embedding for the puzzle to sit in
-    embed = discord.Embed(title=f"Find the best move for {color}!\n(puzzle {puzzle_id})",
+    embed = discord.Embed(title=f"Find the best move for {color}!\n(puzzle ID: {puzzle_id})",
                           url=f'https://lichess.org/training/{puzzle_id}',
                           colour=0x00ffff
                           )
@@ -76,7 +80,7 @@ async def show_puzzle(context: Context, puzzle_id: str = '') -> None:
     puzzle = discord.File(f'{BASE_DIR}/media/puzzle.png', filename="puzzle.png")  # load puzzle as Discord file
     embed.set_image(url="attachment://puzzle.png")
     embed.add_field(name=f"Answer with `{PREFIX}answer`",
-                    value="Use the standard algebraic notation (Qxb7+), or UCI (b2c3)\n"
+                    value=f"Answer using SAN ({initial_move_san}) or UCI ({initial_move_uci}) notation\n"
                           f"Puzzle difficulty rating: ||**{rating}**||")
 
     await context.send(file=puzzle, embed=embed)  # send puzzle
@@ -84,10 +88,10 @@ async def show_puzzle(context: Context, puzzle_id: str = '') -> None:
     # Set current puzzle as active for this channel.
     channel_puzzle = ("INSERT INTO channel_puzzles "
                       "(ChannelId, PuzzleId, Moves, FEN) "
-                      "VALUES (%s, %s, %s, %s) "
-                      "ON DUPLICATE KEY UPDATE PuzzleId = VALUES(PuzzleId)"
+                      f"VALUES (%s, %s, %s, %s) "
+                      "ON DUPLICATE KEY UPDATE PuzzleId = VALUES(PuzzleId), "
                       "Moves = VALUES(Moves), FEN = VALUES(FEN)")
-    data_puzzle = (str(context.message.channel.id), str(puzzle_id), str(moves), str(FEN))
+    data_puzzle = (str(context.message.channel.id), str(puzzle_id), ' '.join(moves), str(fen))
 
     cursor.execute(channel_puzzle, data_puzzle)
     connection.commit()
@@ -152,52 +156,79 @@ async def answer_puzzle(context: Context, answer: str) -> None:
         return
 
     cursor = connection.cursor(buffered=True)
-
-    get_puzzle = f"SELECT * FROM channel_puzzles WHERE ChannelId = {str(context.message.channel.id)};"
+    get_puzzle = f"SELECT puzzles.PuzzleId, Rating, channel_puzzles.Moves, channel_puzzles.FEN " \
+                 f"FROM channel_puzzles LEFT JOIN puzzles ON channel_puzzles.PuzzleId = puzzles.PuzzleId " \
+                 f"WHERE ChannelId = {str(context.message.channel.id)};"
     cursor.execute(get_puzzle)
+
     try:
-        _, puzzle_id, rating, moves, FEN = cursor.fetchall()[0]
+        puzzle_id, rating, moves, fen = cursor.fetchall()[0]
+        moves = moves.split()
     except IndexError:
         await context.send(f"There is no active puzzle in this channel! Check `{PREFIX}commands` for how to start a "
                            f"puzzle")
+        cursor.close()
+        connection.disconnect()
         return
 
-    # Make sure the retrieved contents are lists, as expected, to prevent arbitrary code execution with eval().
+    if len(moves) == 0:
+        embed = discord.Embed(title=f"No active puzzle!",
+                              colour=0x00ffff
+                              )
+        embed.add_field(name="Oops!",
+                        value="I'm sorry. I currently don't have the answers to a puzzle. Please try another "
+                              f"`{PREFIX}puzzle`")
+        await context.send(embed=embed)
+        cursor.close()
+        connection.disconnect()
+        return
 
-    moves = moves.split()
-
-    board = chess.Board(FEN)
-
-    embed = discord.Embed(title=f"Answering puzzle {puzzle_id}",
+    embed = discord.Embed(title=f"Answering puzzle ID: {puzzle_id}",
                           url=f'https://lichess.org/training/{puzzle_id}',
                           colour=0x00ffff
                           )
 
+    board = chess.Board(fen)
     spoiler = '||' if answer.startswith('||') else ''
-    if len(moves) == 0:
-        embed.add_field(name="Oops!",
-                        value="I'm sorry. I currently don't have the answers to a puzzle. Please try another "
-                              f"`{PREFIX}puzzle`")
-    elif re.sub(r'[|#+x]', '', answer.lower()) == re.sub(r'[#+x]', '', moves[0].lower()):
-        if len(follow_ups) == 0:
-            embed.add_field(name="Correct!", value=f"Yes! The best move was {spoiler + answers[0] + spoiler}. "
-                                                   f"You completed the puzzle! (difficulty rating {puzzle_rating})")
-        else:
+    stripped_answer = re.sub(r'[|#+x]', '', answer.lower())
+    correct_uci = moves[0]
+    correct_san = board.san(board.parse_uci(correct_uci))
+    stripped_correct_san = re.sub(r'[|#+x]', '', correct_san.lower())
+
+    if stripped_answer in [correct_uci, stripped_correct_san]:  # Correct answer
+        if len(moves) == 1:  # Last step in puzzle
+            moves.pop(0)
+            board.push(board.parse_uci(correct_uci))
+
+            fen = board.fen()
+
+            embed.add_field(name="Correct!", value=f"Yes! The best move was {spoiler + correct_san + spoiler}. "
+                                                   f"You completed the puzzle! (difficulty rating {rating})")
+        else:  # Not the last step in puzzle
+            moves.pop(0)
+            board.push(board.parse_uci(correct_uci))
+
+            reply_uci = moves.pop(0)
+            move = board.parse_uci(reply_uci)
+            reply_san = board.san(move)
+            board.push(board.parse_uci(reply_uci))
+
+            fen = board.fen()
+
             embed.add_field(name="Correct!",
-                            value=f"Yes! The best move was {spoiler + answers[0] + spoiler}. The opponent "
-                                  f"responded with {spoiler + follow_ups.pop(0) + spoiler}, "
+                            value=f"Yes! The best move was {spoiler + correct_san + spoiler}. The opponent "
+                                  f"responded with {spoiler + reply_san + spoiler}, "
                                   f"now what's the best move?")
-        answers.pop(0)
-    else:
+    else:  # Incorrect answer
         embed.add_field(name="Wrong!", value=f"{answer} is not the best move. Try again using `{PREFIX}"
                                              f"answer` or get the answer with `{PREFIX}bestmove`")
 
     await context.send(embed=embed)
 
     update_query = (f"UPDATE channel_puzzles "
-                    f"SET answers = %s, follow_ups = %s "
-                    f"WHERE channel_id = %s;")
-    update_data = (str(answers), str(follow_ups), str(context.message.channel.id))
+                    f"SET Moves = %s, FEN = %s "
+                    f"WHERE ChannelId = %s;")
+    update_data = (' '.join(moves), str(fen), str(context.message.channel.id))
 
     cursor.execute(update_query, update_data)
     connection.commit()
@@ -225,45 +256,60 @@ async def give_best_move(context: Context) -> None:
 
     cursor = connection.cursor(buffered=True)
 
-    get_puzzle = f"SELECT * FROM channel_puzzles WHERE channel_id = {str(context.message.channel.id)};"
+    get_puzzle = f"SELECT puzzles.PuzzleId, Rating, channel_puzzles.Moves, channel_puzzles.FEN " \
+                 f"FROM channel_puzzles LEFT JOIN puzzles ON channel_puzzles.PuzzleId = puzzles.PuzzleId " \
+                 f"WHERE ChannelId = {str(context.message.channel.id)};"
     cursor.execute(get_puzzle)
+
     try:
-        _, puzzle_id, puzzle_rating, answers, follow_ups = cursor.fetchall()[0]
+        puzzle_id, rating, moves, fen = cursor.fetchall()[0]
+        moves = moves.split()
     except IndexError:
-        await context.send(f"There is no active puzzle in this channel! See {PREFIX}commands on how to start a "
+        await context.send(f"There is no active puzzle in this channel! Check `{PREFIX}commands` for how to start a "
                            f"puzzle")
+        cursor.close()
+        connection.disconnect()
         return
 
-    if not (answers.startswith('[') and answers.endswith(']') and
-            follow_ups.startswith('[') and follow_ups.endswith(']')):
-        await context.send('Something went wrong loading this puzzle!')
+    if len(moves) == 0:  # No active puzzle
+        embed = discord.Embed(title=f"No active puzzle!",
+                              colour=0x00ffff
+                              )
+        embed.add_field(name="Oops!",
+                        value="I'm sorry. I currently don't have the answers to a puzzle. Please try another "
+                              f"`{PREFIX}puzzle`")
+        await context.send(embed=embed)
+        cursor.close()
+        connection.disconnect()
         return
 
-    answers = eval(answers)  # string representation to list
-    follow_ups = eval(follow_ups)  # string representation to list
-
-    embed = discord.Embed(title=f"Answering puzzle {puzzle_id}",
+    embed = discord.Embed(title=f"Answering puzzle ID: {puzzle_id}",
                           url=f'https://lichess.org/training/{puzzle_id}',
                           colour=0x00ffff
                           )
-    if len(answers) == 0:
-        embed.add_field(name="Oops!",
-                        value="I'm sorry. I currently don't have the answers to a puzzle. Please try another "
-                              f"{PREFIX}puzzle")
-    elif len(follow_ups) > 0:
-        embed.add_field(name="Answer", value=f"The best move is ||{answers.pop(0)}||. "
-                                             f"The opponent responded with ||{follow_ups.pop(0)}||, now what's the best"
+
+    board = chess.Board(fen)
+    move = board.parse_uci(moves.pop(0))
+    san_move = board.san(move)
+    board.push(move)
+
+    if len(moves) > 1:
+        follow_up = board.parse_uci(moves.pop(0))
+        follow_up_san = board.san(follow_up)
+        board.push(follow_up)
+        embed.add_field(name="Answer", value=f"The best move is ||{san_move}||. "
+                                             f"The opponent responded with ||{follow_up_san}||, now what's the best"
                                              f" move?")
     else:
-        embed.add_field(name="Answer", value=f"The best move is ||{answers.pop(0)}||. That's the end of the puzzle! "
-                                             f"(difficulty rating {puzzle_rating})")
+        embed.add_field(name="Answer", value=f"The best move is ||{san_move}||. That's the end of the puzzle! "
+                                             f"(difficulty rating {rating})")
 
     await context.send(embed=embed)
 
     update_query = (f"UPDATE channel_puzzles "
-                    f"SET answers = %s, follow_ups = %s "
-                    f"WHERE channel_id = %s;")
-    update_data = (str(answers), str(follow_ups), str(context.message.channel.id))
+                    f"SET Moves = %s, FEN = %s "
+                    f"WHERE ChannelId = %s;")
+    update_data = (' '.join(moves), str(fen), str(context.message.channel.id))
     cursor.execute(update_query, update_data)
     connection.commit()
 
