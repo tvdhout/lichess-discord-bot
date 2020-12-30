@@ -63,10 +63,6 @@ async def commands(context: Context):
 async def help(context):
     """
     Alias for commands
-
-    _________
-    Usage
-    !help
     """
     await commands(context)
 
@@ -107,8 +103,6 @@ async def rating(context):
     !rating [username] average - Retrieves the average rating over Bullet, Blitz, Rapid and Classical
     """
     message = context.message
-    if message.author == client.user:
-        return
 
     contents = message.content.split()
     if len(contents) == 1:  # !rating TODO: use linked profile
@@ -120,7 +114,7 @@ async def rating(context):
     try:
         user = lichess.api.user(username)
     except lichess.api.ApiHttpError:
-        await message.channel.send("This username does not exist!")
+        await message.channel.send("This Lichess username does not exist!")
         return
 
     if len(contents) == 2:  # !rating [name/url]
@@ -128,6 +122,14 @@ async def rating(context):
     elif len(contents) > 2:  # !rating [name/url] [gamemode]
         gamemode = contents[2]
         await gamemode_rating(message, user, gamemode)
+
+
+@client.command(pass_context=True)
+async def ratings(context):
+    """
+    Alias for rating
+    """
+    await rating(context)
 
 
 @client.command(pass_context=True)
@@ -150,9 +152,9 @@ async def puzzle(context: Context):
     if match is not None:  # -puzzle [id]
         low = int(match.group(1))
         high = int(match.group(2))
-        await puzzle_by_rating(context, low, high)
+        await puzzle_by_rating(context, low=low, high=high)
     elif len(contents) == 2:
-        await show_puzzle(context, contents[1])
+        await show_puzzle(context, puzzle_id=contents[1])
     else:
         await show_puzzle(context)
 
@@ -177,7 +179,7 @@ async def answer(context):
         await context.send(f"Give an answer to the most recent puzzle using `{PREFIX}answer [move]` \n"
                            "Use the common algebraic notation like Qxb7, R1a5, d4, etc.")
     else:
-        await answer_puzzle(context, contents[1])
+        await answer_puzzle(context, answer=contents[1])
 
 
 @client.command(pass_context=True)
@@ -208,6 +210,7 @@ class TopGG(discord.ext.commands.Cog):
         self.token = TOP_GG_TOKEN
         self.dblpy = dbl.DBLClient(self.bot, self.token, autopost=True)
 
+    @discord.ext.commands.Cog.listener()
     async def on_guild_post(self):
         print("Server count posted successfully")
 
@@ -215,6 +218,5 @@ class TopGG(discord.ext.commands.Cog):
 if __name__ == '__main__':
     # FIXME: update server count
     if PREFIX != config_dev.PREFIX:
-        topgg_cog = TopGG(client)
-        client.add_cog(topgg_cog)
+        client.add_cog(TopGG(client))
     client.run(TOKEN)

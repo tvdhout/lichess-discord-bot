@@ -1,6 +1,6 @@
 import discord
 from discord.ext.commands import Context
-import mysql.connector
+import db_connection
 
 import random
 import re
@@ -12,28 +12,17 @@ from chess import svg
 from cairosvg import svg2png
 
 
-async def show_puzzle(context: Context, puzzle_id: str = '') -> None:
+@db_connection.connect
+async def show_puzzle(context: Context, cursor, puzzle_id: str = '') -> None:
     """
     Show a puzzle
 
     Parameters
     ----------
     message - the command entered by the user, used as a context to know which channel to post the reply to
+    cursor - mysql.connector cursor given by the connect decorator
     puzzle_id - by default an empty string, resulting in a random puzzle. People can also enter a particular puzzle ID
     """
-
-    try:  # Connect to database
-        connection = mysql.connector.connect(user='thijs',
-                                             host='localhost',
-                                             database='lichess')
-    except mysql.connector.Error:
-        await context.send("Oops! I can't connect to the puzzle database. This might be because I am working on the "
-                           "database. If the problem persists, please let me know by filing an issue at "
-                           "https://github.com/tvdhout/Lichess-discord-bot/issues or post in the bot support server: "
-                           "https://discord.gg/xCpCRsp")
-        return
-
-    cursor = connection.cursor(buffered=True)
 
     if puzzle_id == '':
         cursor.execute(f"SELECT PuzzleId from puzzles ORDER BY RAND() LIMIT 1;")
@@ -94,32 +83,16 @@ async def show_puzzle(context: Context, puzzle_id: str = '') -> None:
     data_puzzle = (str(context.message.channel.id), str(puzzle_id), ' '.join(moves), str(fen))
 
     cursor.execute(channel_puzzle, data_puzzle)
-    connection.commit()
 
     # Purge puzzle images
     os.remove(f'{BASE_DIR}/media/puzzle.png')
 
-    # Wrap up
-    cursor.close()
-    connection.disconnect()
 
-
-async def puzzle_by_rating(context: Context, low: int, high: int):
+@db_connection.connect
+async def puzzle_by_rating(context: Context, cursor, low: int, high: int):
     if low > high:
         low, high = high, low
-    try:  # Connect to database
-        connection = mysql.connector.connect(user='thijs',
-                                             host='localhost',
-                                             database='lichess')
-    except mysql.connector.Error as err:
-        print(err)
-        await context.send("Oops! I can't connect to the puzzle database. This might be because I am working on the "
-                           "database. If the problem persists, please let me know by filing an issue at "
-                           "https://github.com/tvdhout/Lichess-discord-bot/issues or post in the bot support server: "
-                           "https://discord.gg/xCpCRsp")
-        return
 
-    cursor = connection.cursor(buffered=True)
     get_puzzle = f"SELECT PuzzleId FROM puzzles WHERE Rating BETWEEN {low} AND {high}"
     cursor.execute(get_puzzle)
     try:
@@ -128,13 +101,11 @@ async def puzzle_by_rating(context: Context, low: int, high: int):
         await context.send(f"I can't find a puzzle between ratings {low} and {high}!")
         return
 
-    await show_puzzle(context, puzzle_id)
-
-    cursor.close()
-    connection.disconnect()
+    await show_puzzle(context, puzzle_id=puzzle_id)
 
 
-async def answer_puzzle(context: Context, answer: str) -> None:
+@db_connection.connect
+async def answer_puzzle(context: Context, cursor, answer: str) -> None:
     """
     User can provide an answer to the last posted puzzle
 
@@ -143,19 +114,6 @@ async def answer_puzzle(context: Context, answer: str) -> None:
     message - the command entered by the user, used as a context to know which channel to post the reply to
     answer - the move the user provided
     """
-    try:  # Connect to database
-        connection = mysql.connector.connect(user='thijs',
-                                             host='localhost',
-                                             database='lichess')
-    except mysql.connector.Error as err:
-        print(err)
-        await context.send("Oops! I can't connect to the puzzle database. This might be because I am working on the "
-                           "database. If the problem persists, please let me know by filing an issue at "
-                           "https://github.com/tvdhout/Lichess-discord-bot/issues or post in the bot support server: "
-                           "https://discord.gg/xCpCRsp")
-        return
-
-    cursor = connection.cursor(buffered=True)
     get_puzzle = f"SELECT puzzles.PuzzleId, Rating, channel_puzzles.Moves, channel_puzzles.FEN " \
                  f"FROM channel_puzzles LEFT JOIN puzzles ON channel_puzzles.PuzzleId = puzzles.PuzzleId " \
                  f"WHERE ChannelId = {str(context.message.channel.id)};"
@@ -167,8 +125,6 @@ async def answer_puzzle(context: Context, answer: str) -> None:
     except IndexError:
         await context.send(f"There is no active puzzle in this channel! Check `{PREFIX}commands` for how to start a "
                            f"puzzle")
-        cursor.close()
-        connection.disconnect()
         return
 
     if len(moves) == 0:
@@ -179,8 +135,6 @@ async def answer_puzzle(context: Context, answer: str) -> None:
                         value="I'm sorry. I currently don't have the answers to a puzzle. Please try another "
                               f"`{PREFIX}puzzle`")
         await context.send(embed=embed)
-        cursor.close()
-        connection.disconnect()
         return
 
     embed = discord.Embed(title=f"Answering puzzle ID: {puzzle_id}",
@@ -231,30 +185,16 @@ async def answer_puzzle(context: Context, answer: str) -> None:
     update_data = (' '.join(moves), str(fen), str(context.message.channel.id))
 
     cursor.execute(update_query, update_data)
-    connection.commit()
-
-    cursor.close()
-    connection.disconnect()
 
 
-async def give_best_move(context: Context) -> None:
+@db_connection.connect
+async def give_best_move(context: Context, cursor) -> None:
     """
     Give the best move for the last posted puzzle.
     Parameters
     ----------
     message - the command entered by the user, used as a context to know which channel to post the reply to
     """
-    try:  # Connect to database
-        connection = mysql.connector.connect(user='thijs',
-                                             host='localhost',
-                                             database='lichess')
-    except mysql.connector.Error as err:
-        print(err)
-        await context.send("Oops! I can't connect to the puzzle database. Please report this in the bot support "
-                           "server: https://discord.gg/xCpCRsp or file an issue on GitHub.")
-        return
-
-    cursor = connection.cursor(buffered=True)
 
     get_puzzle = f"SELECT puzzles.PuzzleId, Rating, channel_puzzles.Moves, channel_puzzles.FEN " \
                  f"FROM channel_puzzles LEFT JOIN puzzles ON channel_puzzles.PuzzleId = puzzles.PuzzleId " \
@@ -267,8 +207,6 @@ async def give_best_move(context: Context) -> None:
     except IndexError:
         await context.send(f"There is no active puzzle in this channel! Check `{PREFIX}commands` for how to start a "
                            f"puzzle")
-        cursor.close()
-        connection.disconnect()
         return
 
     if len(moves) == 0:  # No active puzzle
@@ -279,8 +217,6 @@ async def give_best_move(context: Context) -> None:
                         value="I'm sorry. I currently don't have the answers to a puzzle. Please try another "
                               f"`{PREFIX}puzzle`")
         await context.send(embed=embed)
-        cursor.close()
-        connection.disconnect()
         return
 
     embed = discord.Embed(title=f"Answering puzzle ID: {puzzle_id}",
@@ -292,11 +228,13 @@ async def give_best_move(context: Context) -> None:
     move = board.parse_uci(moves.pop(0))
     san_move = board.san(move)
     board.push(move)
+    fen = board.fen()
 
     if len(moves) > 1:
         follow_up = board.parse_uci(moves.pop(0))
         follow_up_san = board.san(follow_up)
         board.push(follow_up)
+        fen = board.fen()
         embed.add_field(name="Answer", value=f"The best move is ||{san_move}||. "
                                              f"The opponent responded with ||{follow_up_san}||, now what's the best"
                                              f" move?")
@@ -311,7 +249,3 @@ async def give_best_move(context: Context) -> None:
                     f"WHERE ChannelId = %s;")
     update_data = (' '.join(moves), str(fen), str(context.message.channel.id))
     cursor.execute(update_query, update_data)
-    connection.commit()
-
-    cursor.close()
-    connection.disconnect()
