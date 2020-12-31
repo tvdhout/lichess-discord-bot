@@ -18,9 +18,8 @@ def connect(func):
                 cursor.close()
                 connection.disconnect()
         except mysql.connector.Error:
-            await context.send("Oops! I can't connect to the puzzle database. This might be because I am working on "
-                               "the database. If the problem persists, please let me know by filing an issue at "
-                               "https://github.com/tvdhout/Lichess-discord-bot/issues or post in the bot support "
+            await context.send("Oops! I can't connect to the puzzle database. If the problem persists, please let me "
+                               "know by filing an issue in the bot support "
                                "server: https://discord.gg/xCpCRsp")
             print("Database connection error")
 
