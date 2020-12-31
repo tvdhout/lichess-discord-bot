@@ -41,8 +41,8 @@ async def show_puzzle(context: Context, cursor, puzzle_id: str = '') -> None:
                                              f"Command usage:\n"
                                              f"`{PREFIX}puzzle` -> show a random puzzle\n"
                                              f"`{PREFIX}puzzle [id]` -> show a particular puzzle\n"
-                                             f"`{PREFIX}puzzle rating1-rating2` -> show a random puzzle with a rating between "
-                                             f"rating1 and rating2.")
+                                             f"`{PREFIX}puzzle rating1-rating2` -> show a random puzzle with a rating "
+                                             f"between rating1 and rating2.")
         await context.send(embed=embed)
         return
 
@@ -55,12 +55,12 @@ async def show_puzzle(context: Context, cursor, puzzle_id: str = '') -> None:
     fen = board.fen()
     color = 'white' if ' w ' in fen else 'black'
 
+    # Create svg image from board
     image = svg.board(board, lastmove=move, colors={'square light': '#f2d0a2', 'square dark': '#aa7249'},
                       flipped=(color == 'black'))
-    # Save puzzle image
+    # Save puzzle image as png
     svg2png(bytestring=str(image), write_to=f'{BASE_DIR}/media/puzzle.png', parent_width=1000, parent_height=1000)
 
-    # Create embedding for the puzzle to sit in
     embed = discord.Embed(title=f"Find the best move for {color}!\n(puzzle ID: {puzzle_id})",
                           url=f'https://lichess.org/training/{puzzle_id}',
                           colour=0x00ffff
@@ -151,14 +151,14 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
                 return True
             board.pop()
             return False
-        except ValueError:
+        except ValueError:  # invalid move
             return False
 
     if is_answer_mate(answer) or is_answer_mate(answer, notation='uci') or is_answer_mate(answer.capitalize()):
         embed.add_field(name="Correct!", value=f"Yes! {spoiler + answer + spoiler} is checkmate. "
                                                f"You completed the puzzle! (difficulty rating {rating})")
         await context.send(embed=embed)
-
+        # Puzzle is done, remove entry from channel_puzzles
         delete_puzzle = (f"DELETE FROM channel_puzzles "
                          f"WHERE ChannelId = %s;")
         cursor.execute(delete_puzzle, (str(context.channel.id),))
