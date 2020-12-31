@@ -124,8 +124,10 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
         puzzle_id, rating, moves, fen, message_id = cursor.fetchall()[0]
         moves = moves.split()
     except IndexError:
-        await context.send(f"There is no active puzzle in this channel! Check `{PREFIX}commands` for how to start a "
-                           f"puzzle")
+        embed = discord.Embed(title=f"No active puzzle!", colour=0x00ffff)
+        embed.add_field(name="Start a new puzzle", value=f"To start a puzzle use the `{PREFIX}puzzle` command.\n"
+                                                         f"Use `{PREFIX}commands` for more options.")
+        await context.send(embed=embed)
         return
 
     embed = discord.Embed(title=f"Answering puzzle ID: {puzzle_id}",
@@ -223,8 +225,10 @@ async def give_best_move(context: Context, cursor) -> None:
         puzzle_id, rating, moves, fen = cursor.fetchall()[0]
         moves = moves.split()
     except IndexError:
-        await context.send(f"There is no active puzzle in this channel! Check `{PREFIX}commands` for how to start a "
-                           f"puzzle")
+        embed = discord.Embed(title=f"No active puzzle!", colour=0x00ffff)
+        embed.add_field(name="Start a new puzzle", value=f"To start a puzzle use the `{PREFIX}puzzle` command.\n"
+                                                         f"Use `{PREFIX}commands` for more options.")
+        await context.send(embed=embed)
         return
 
     embed = discord.Embed(title=f"Answering puzzle ID: {puzzle_id}",
