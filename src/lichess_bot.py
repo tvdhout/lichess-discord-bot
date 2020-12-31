@@ -13,8 +13,8 @@ import lichess.api
 from profile import show_profile
 from rating import all_ratings, gamemode_rating
 from puzzle import show_puzzle, answer_puzzle, give_best_move, puzzle_by_rating
-from config import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration files for stable bot
-# from config_dev import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration for development bot
+# from config import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration files for stable bot
+from config_dev import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration for development bot
 
 client = commands.Bot(command_prefix=PREFIX)
 client.remove_command('help')  # remove default help command
@@ -24,6 +24,13 @@ client.remove_command('help')  # remove default help command
 async def on_ready():
     print('Logged in as {0.user}'.format(client))
     print("Bot id: ", client.user.id)
+
+
+# @client.command(pass_context=True)
+# async def testcommand(context: Context):
+#     embed = discord.Embed(title=f"Commands", colour=0x00ffff)
+#     embed.set_image(url='../media/lichesslogo.png')
+#     await context.send(embed=embed)
 
 
 @client.command(pass_context=True)
@@ -177,7 +184,7 @@ async def answer(context):
     contents = message.content.split()
     if len(contents) == 1:
         await context.send(f"Give an answer to the most recent puzzle using `{PREFIX}answer [move]` \n"
-                           "Use the common algebraic notation like Qxb7, R1a5, d4, etc.")
+                           "Use the common algebraic notation like Qxb7, or UCI notation like e2e4.")
     else:
         await answer_puzzle(context, answer=contents[1])
 
