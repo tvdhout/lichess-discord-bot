@@ -1,23 +1,19 @@
 import lichess.api
 import discord
+from discord.ext.commands import Context
 from datetime import timedelta
 
 
-async def show_profile(message, username):
-    if username is None:  # TODO: no username = own profile
-        username = 'stockvis'
-
-    embed = discord.Embed(title=username,
-                          colour=0x00ffff
-                          )
+async def show_profile(context: Context, username: str) -> None:
+    embed = discord.Embed(title=username, colour=0x00ffff)
 
     try:
         user = lichess.api.user(username)
         embed.url = f'https://lichess.org/@/{username}'
         embed.title = user['username']
     except lichess.api.ApiHttpError:
-        embed.add_field(name='Error', value='This usename does not exist.')
-        await message.channel.send(embed=embed)
+        embed.add_field(name='Error', value='This lichess usename does not exist.')
+        await context.send(embed=embed)
         return
 
     profile_contents = ''
@@ -54,4 +50,4 @@ async def show_profile(message, username):
     embed.add_field(name='Export games', value=f"[Download](https://lichess.org/api/games/user/{user['username']})",
                     inline=False)
 
-    await message.channel.send(embed=embed)
+    await context.send(embed=embed)

@@ -1,17 +1,27 @@
 import discord
+from discord.ext.commands import Context
 import numpy as np
+import lichess.api
 
 
-async def all_ratings(message: discord.message.Message, user: dict, avg_only: bool = False) -> None:
+async def all_ratings(context: Context, username: str, avg_only: bool = False) -> None:
     """
     Show the ratings for each gamemode and the average rating over ['Bullet', 'Blitz', 'Rapid', 'Classical']
-    :param message: user's message to reply to
-    :param user: lichess.api user object
+    :param context: context in which to reply
+    :param username: lichess username
     :param avg_only: Only show the average rating over ['Bullet', 'Blitz', 'Rapid', 'Classical']
     :return: Show the embedded ratings
     """
-    embed = discord.Embed(title=f"{user['username']}'s {'average' if avg_only else ''} rating{'' if avg_only else 's'}",
-                          url=f"https://lichess.org/@/{user['username']}",
+    try:
+        user = lichess.api.user(username)
+    except lichess.api.ApiHttpError:
+        embed = discord.Embed(title=f"Rating command", colour=0x00ffff)
+        embed.add_field(name="Username not found", value=f"{username} is not an active Lichess account.")
+        await context.send(embed=embed)
+        return
+
+    embed = discord.Embed(title=f"{username}'s {'average' if avg_only else ''} rating{'' if avg_only else 's'}",
+                          url=f"https://lichess.org/@/{username}",
                           colour=0x00ffff
                           )
     embed.set_thumbnail(url='https://raw.githubusercontent.com/tvdhout/Lichess-discord-bot/master/media/lichesslogo.'
@@ -51,34 +61,43 @@ async def all_ratings(message: discord.message.Message, user: dict, avg_only: bo
     embed.add_field(name='Average rating weighted by number of games (Bullet, Blitz, Rapid, Classical)',
                     value=f'**{average_rating}{"?" if average_provisional else ""}**', inline=False)
 
-    await message.channel.send(embed=embed)
+    await context.send(embed=embed)
 
 
-async def gamemode_rating(message: discord.message.Message, user: dict, gamemode: str) -> None:
+async def gamemode_rating(context: Context, username: str, gamemode: str) -> None:
     """
     Show the rating of a given user in a particular gamemode
-    :param message: user's message to reply to
-    :param user: lichess.api user object
+    :param context: context to reply in
+    :param username: lichess usename
     :param gamemode: which rating to check
     :return: send the embedded message, return nothing
     """
-    if gamemode.lower() == 'average':
-        await all_ratings(message, user, avg_only=True)
+    try:
+        user = lichess.api.user(username)
+    except lichess.api.ApiHttpError:
+        embed = discord.Embed(title=f"Rating command", colour=0x00ffff)
+        embed.add_field(name="Username not found", value=f"{username} is not an active Lichess account.")
+        await context.send(embed=embed)
         return
 
-    embed = discord.Embed(title=f"{user['username']}'s rating",
+    if gamemode.lower() == 'average':
+        await all_ratings(context, username, avg_only=True)
+        return
+
+    embed = discord.Embed(title=f"{username}'s rating",
                           url=f"https://lichess.org/@/{user['username']}",
                           colour=0x00ffff
                           )
     embed.set_thumbnail(url='https://raw.githubusercontent.com/tvdhout/Lichess-discord-bot/master/media/lichesslogo.'
                             'png')
 
-    if gamemode.lower() in user['prefs']:
-        element = user['prefs'][gamemode.lower()]
+    if gamemode.lower() in user['perfs']:
+        element = user['perfs'][gamemode.lower()]
         embed.add_field(name=gamemode.capitalize(), value=f"{element['rating']}{'?' * ('prov' in element)} "
-                                                          f"({element['games']}"
+                                                          f"({element['games']} "
                                                           f"{'puzzles' if gamemode.lower() == 'puzzle' else 'games'})")
     else:
-        embed.add_field(name='Error', value=f"I can't find {user['username']}'s {gamemode} rating.")
+        embed.add_field(name='Error', value=f"I can't find {user['username']}'s {gamemode} rating. The user may not "
+                                            f"have played enough games in this mode, or the gamemode doesn't exist.")
 
-    await message.channel.send(embed=embed)
+    await context.send(embed=embed)
