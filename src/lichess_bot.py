@@ -85,7 +85,7 @@ async def about(context):
                           f"[this page](https://top.gg/bot/707287095911120968). "
                           f"Check out what I can do using `{PREFIX}commands.` "
                           f"Any issues or suggestions can be posted in the "
-                          f"[bot support server](https://discord.gg/xCpCRsp).")
+                          f"[bot support server](https://discord.gg/4B8PwMKwwq).")
 
     await context.send(embed=embed)
 
