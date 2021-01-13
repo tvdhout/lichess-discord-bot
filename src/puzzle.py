@@ -132,7 +132,6 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
 
     embed = discord.Embed(title=f"Answering puzzle ID: {puzzle_id}",
                           url=f'https://lichess.org/training/{puzzle_id}',
-                          colour=0x00ffff
                           )
 
     board = chess.Board(fen)
@@ -157,6 +156,7 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
             return False
 
     if is_answer_mate(answer) or is_answer_mate(answer, notation='uci') or is_answer_mate(answer.capitalize()):
+        embed.colour = 0x00ff00
         embed.add_field(name="Correct!", value=f"Yes! {spoiler + answer + spoiler} is checkmate. "
                                                f"You completed the puzzle! (difficulty rating {rating})")
         await context.send(embed=embed)
@@ -168,6 +168,7 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
 
     if stripped_answer in [correct_uci, stripped_correct_san]:  # Correct answer
         if len(moves) == 1:  # Last step in puzzle
+            embed.colour = 0x00ff00
             embed.add_field(name="Correct!", value=f"Yes! The best move was {spoiler + correct_san + spoiler}. "
                                                    f"You completed the puzzle! (difficulty rating {rating})")
             await context.send(embed=embed)
@@ -187,6 +188,7 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
 
             fen = board.fen()  # Get the FEN of the board with applied moves to use for the next answer
 
+            embed.colour = 0x00ff00
             embed.add_field(name="Correct!",
                             value=f"Yes! The best move was {spoiler + correct_san + spoiler}. The opponent "
                                   f"responded with {spoiler + reply_san + spoiler}, "
@@ -201,6 +203,7 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
 
             cursor.execute(update_query, update_data)
     else:  # Incorrect answer
+        embed.colour = 0xff0000
         embed.add_field(name="Wrong!", value=f"{answer} is not the best move. Try again using `{PREFIX}"
                                              f"answer` or get the answer with `{PREFIX}bestmove`")
 
@@ -225,7 +228,7 @@ async def give_best_move(context: Context, cursor) -> None:
         puzzle_id, rating, moves, fen = cursor.fetchall()[0]
         moves = moves.split()
     except IndexError:
-        embed = discord.Embed(title=f"No active puzzle!", colour=0x00ffff)
+        embed = discord.Embed(title=f"No active puzzle!", colour=0xffff00)
         embed.add_field(name="Start a new puzzle", value=f"To start a puzzle use the `{PREFIX}puzzle` command.\n"
                                                          f"Use `{PREFIX}commands` for more options.")
         await context.send(embed=embed)
@@ -233,7 +236,7 @@ async def give_best_move(context: Context, cursor) -> None:
 
     embed = discord.Embed(title=f"Answering puzzle ID: {puzzle_id}",
                           url=f'https://lichess.org/training/{puzzle_id}',
-                          colour=0x00ffff
+                          colour=0xffff00
                           )
 
     board = chess.Board(fen)

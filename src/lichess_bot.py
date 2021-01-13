@@ -12,8 +12,9 @@ from discord.ext.commands import Context
 from profile import show_profile
 from rating import all_ratings, gamemode_rating
 from puzzle import show_puzzle, answer_puzzle, give_best_move, puzzle_by_rating
-from config import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration files for stable bot
-# from config_dev import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration for development bot
+# from config import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration files for stable bot
+from config_dev import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration for development bot
+
 
 client = commands.Bot(command_prefix=PREFIX)
 client.remove_command('help')  # remove default help command

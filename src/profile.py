@@ -12,6 +12,7 @@ async def show_profile(context: Context, username: str) -> None:
         embed.url = f'https://lichess.org/@/{username}'
         embed.title = user['username']
     except lichess.api.ApiHttpError:
+        embed.colour = 0xff0000
         embed.add_field(name='Error', value='This lichess usename does not exist.')
         await context.send(embed=embed)
         return

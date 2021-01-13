@@ -15,7 +15,7 @@ async def all_ratings(context: Context, username: str, avg_only: bool = False) -
     try:
         user = lichess.api.user(username)
     except lichess.api.ApiHttpError:
-        embed = discord.Embed(title=f"Rating command", colour=0x00ffff)
+        embed = discord.Embed(title=f"Rating command", colour=0xff0000)
         embed.add_field(name="Username not found", value=f"{username} is not an active Lichess account.")
         await context.send(embed=embed)
         return
@@ -75,7 +75,7 @@ async def gamemode_rating(context: Context, username: str, gamemode: str) -> Non
     try:
         user = lichess.api.user(username)
     except lichess.api.ApiHttpError:
-        embed = discord.Embed(title=f"Rating command", colour=0x00ffff)
+        embed = discord.Embed(title=f"Rating command", colour=0xff0000)
         embed.add_field(name="Username not found", value=f"{username} is not an active Lichess account.")
         await context.send(embed=embed)
         return
@@ -99,5 +99,6 @@ async def gamemode_rating(context: Context, username: str, gamemode: str) -> Non
     else:
         embed.add_field(name='Error', value=f"I can't find {user['username']}'s {gamemode} rating. The user may not "
                                             f"have played enough games in this mode, or the gamemode doesn't exist.")
+        embed.colour = 0xff0000
 
     await context.send(embed=embed)
