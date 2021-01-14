@@ -2,15 +2,32 @@ import lichess.api
 import discord
 from discord.ext.commands import Context
 from datetime import timedelta
+import db_connection
+from config import PREFIX
 
 
-async def show_profile(context: Context, username: str) -> None:
-    embed = discord.Embed(title=username, colour=0x00ffff)
+@db_connection.connect
+async def show_profile(context: Context, cursor, username: str = None) -> None:
 
+    if username is None:
+        discord_uid = str(context.message.author.id)
+        try:
+            cursor.execute(f"SELECT LichessName FROM users WHERE DiscordUID = {discord_uid}")
+            username = cursor.fetchall()[0][0]
+        except IndexError:
+            embed = discord.Embed(title="Profile command", colour=0xff0000)
+            embed.add_field(name="No username",
+                            value="To use this command without giving a username, link your Discord profile to your "
+                                  f"Lichess account using `{PREFIX}connect`.\n"
+                                  f"Alternatively, provide a lichess username with `{PREFIX}profile [username]`.")
+            await context.send(embed=embed)
+            return
+
+    embed = discord.Embed(title=f"{username}'s Profile", colour=0x00ffff)
     try:
         user = lichess.api.user(username)
         embed.url = f'https://lichess.org/@/{username}'
-        embed.title = user['username']
+        embed.title = f"{user['username']}'s Profile"
     except lichess.api.ApiHttpError:
         embed.colour = 0xff0000
         embed.add_field(name='Error', value='This lichess usename does not exist.')
@@ -50,5 +67,66 @@ async def show_profile(context: Context, username: str) -> None:
 
     embed.add_field(name='Export games', value=f"[Download](https://lichess.org/api/games/user/{user['username']})",
                     inline=False)
+
+    await context.send(embed=embed)
+
+
+@db_connection.connect
+async def link_profile(context: Context, cursor, username: str) -> None:
+    username = username.replace('[', '').replace(']', '')  # for dummies
+    author = context.message.author
+    discord_uid = str(author.id)
+    if len(username) > 20:
+        username = username[:20]+"..."
+    embed = discord.Embed(title=f"Connecting '{author.display_name}' to Lichess account '{username}'", colour=0x00ff00)
+
+    try:
+        user = lichess.api.user(username)
+    except lichess.api.ApiHttpError:
+        embed.colour = 0xff0000
+        embed.add_field(name='Error', value='This lichess usename does not exist.')
+        await context.send(embed=embed)
+        return
+
+    try:
+        puzzle_rating = user['perfs']['puzzle']['rating']
+    except KeyError:  # No puzzle rating found
+        puzzle_rating = 1500  # Set default to 1500
+
+    embed.add_field(name="Success!",
+                    value=f"I connected {author.mention} to the Lichess account "
+                          f"[{username}](https://lichess.org/@/{username}).",
+                    inline=False)
+    embed.add_field(name="Effect on commands:",
+                    value=f"You can now use the `{PREFIX}rating` and `{PREFIX}profile` commands without giving your "
+                          f"username in the command.\n`{PREFIX}puzzle` will now select puzzles near your puzzle "
+                          f"rating! If you don't have a puzzle rating, you will still get random puzzles.",
+                    inline=False)
+    embed.add_field(name="Disconnect",
+                    value=f"To disconnect your Discord account from your Lichess account use the \n`{PREFIX}disconnect`"
+                          f" command.",
+                    inline=False)
+
+    await context.send(embed=embed)
+
+    query = ("INSERT INTO users "
+             "(DiscordUID, LichessName, Rating) "
+             f"VALUES (%s, %s, %s) "
+             f"ON DUPLICATE KEY UPDATE LichessName = VALUES(LichessName), Rating = VALUES(Rating)")
+    cursor.execute(query, (str(discord_uid), str(username), int(puzzle_rating)))
+
+
+@db_connection.connect
+async def unlink_profile(context: Context, cursor):
+    author = context.message.author
+    discord_uid = str(author.id)
+    embed = discord.Embed(title=f"Disconnecting '{author.display_name}'", colour=0x00ff00)
+
+    query = f"DELETE FROM users WHERE DiscordUID = {discord_uid}"
+    cursor.execute(query)
+    n_rows = cursor.rowcount
+    message = "You are no longer connected to a Lichess account" if n_rows == 1 else "You were not connected to a " \
+                                                                                     "Lichess account."
+    embed.add_field(name="Disconnected", value=message)
 
     await context.send(embed=embed)
