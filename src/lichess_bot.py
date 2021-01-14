@@ -9,12 +9,11 @@ import config_dev
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from profile import show_profile
+from profile import show_profile, link_profile, unlink_profile
 from rating import all_ratings, gamemode_rating
 from puzzle import show_puzzle, answer_puzzle, give_best_move, puzzle_by_rating
 # from config import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration files for stable bot
 from config_dev import PREFIX, TOKEN, TOP_GG_TOKEN  # configuration for development bot
-
 
 client = commands.Bot(command_prefix=PREFIX)
 client.remove_command('help')  # remove default help command
@@ -35,26 +34,38 @@ async def commands(context: Context):
     Usage
     !commands
     """
-    embed = discord.Embed(title=f"Commands", colour=0x00ffff)
-    embed.add_field(name=f"Support", value=f"For help, issues or suggestions, join the "
-                                           f"[bot support server](https://discord.gg/xCpCRsp).", inline=False)
-    embed.add_field(name=f"About", value=f"`{PREFIX}about` →  Show information about this bot", inline=False)
-    embed.add_field(name=f"Rating", value=f"`{PREFIX}rating [username]` →  show all ratings and average rating"
-                                          f"\n`{PREFIX}rating [username] [gamemode]` →  show rating for a "
-                                          f"particular gamemode", inline=False)
-    embed.add_field(name=f"Puzzle", value=f"`{PREFIX}puzzle` →  show a random lichess puzzle to solve"
-                                          f"\n`{PREFIX}puzzle [puzzle_id]` →  show a particular lichess puzzle\n"
-                                          f"`{PREFIX}puzzle [rating1]-[rating2]` →  "
-                                          f"show a random puzzle with a rating between rating1 and rating2",
+    embed = discord.Embed(title=f"Commands", colour=0x000000)
+    embed.add_field(name=f":question: Support", value=f"For help, issues or suggestions, join the "
+                                                      f"[bot support server](https://discord.gg/4B8PwMKwwq).",
                     inline=False)
-    embed.add_field(name="Answering puzzles",
+    embed.add_field(name=f":face_with_monocle: About", value=f"`{PREFIX}about` →  Show information about this bot",
+                    inline=False)
+    embed.add_field(name=":link: (Dis)connect your Lichess account",
+                    value=f"`{PREFIX}connect [lichess username]` → connect your Discord profile with your Lichess "
+                          f"account.\n"
+                          f"`{PREFIX}disconnect` → disconnect your Discord profile from a connected Lichess account",
+                    inline=False)
+    embed.add_field(name=f":chart_with_upwards_trend: Rating",
+                    value=f"`{PREFIX}rating [username]` →  show all chess ratings. When connected with"
+                          f"`{PREFIX}connect` you can use this command without giving a username."
+                          f"\n`{PREFIX}rating [username] [gamemode]` →  show rating for a "
+                          f"particular gamemode", inline=False)
+    embed.add_field(name=f":jigsaw: Puzzle",
+                    value=f"`{PREFIX}puzzle` →  show a random lichess puzzle, or one near your puzzle "
+                          f"rating if your Lichess account is connected using `{PREFIX}connect`"
+                          f"\n`{PREFIX}puzzle [puzzle_id]` →  show a particular lichess puzzle\n"
+                          f"`{PREFIX}puzzle [rating1]-[rating2]` →  "
+                          f"show a random puzzle with a rating between rating1 and rating2",
+                    inline=False)
+    embed.add_field(name=":white_check_mark: Answering puzzles",
                     value=f'`{PREFIX}answer [move]` →  give your answer to the most recent puzzle. '
                           f'Use the standard algebraic notation like *Qxb7+* or UCI like *a1b2*. You can give your '
                           f'answer in spoiler tags like this: `{PREFIX}answer ||move||`\n'
                           f'`{PREFIX}bestmove` →  get the best move to play in the previous puzzle, you can continue '
                           f'the puzzle from the next move.', inline=False)
-    embed.add_field(name="Profile",
-                    value=f'`{PREFIX}profile [username]` →  show a lichess user profile.', inline=False)
+    embed.add_field(name=":man_raising_hand: Profile",
+                    value=f"`{PREFIX}profile [username]` →  show a lichess user profile. When connected with "
+                          f"`{PREFIX}connect` you can use this command without giving a username.", inline=False)
 
     await context.send(embed=embed)
 
@@ -76,15 +87,15 @@ async def about(context):
     Usage:
     !about
     """
-    embed = discord.Embed(title=f"Lichess Discord bot", colour=0x00ffff,
+    embed = discord.Embed(title=f"Lichess Discord bot", colour=0x000000,
                           url='https://github.com/tvdhout/Lichess-discord-bot')
     embed.add_field(name="About me",
-                    value=f"I am a bot created by @stockvis and I can obtain various lichess-related "
+                    value=f"I am a bot created by Thijs#9356 and I can obtain various lichess-related "
                           f"pieces of information for you. You can see how I work "
                           f"[on the GitHub page](https://github.com/tvdhout/Lichess-discord-bot). "
                           f"You can invite me to your own server from "
                           f"[this page](https://top.gg/bot/707287095911120968). "
-                          f"Check out what I can do using `{PREFIX}commands.` "
+                          f"Check out what I can do using `{PREFIX}commands`. "
                           f"Any issues or suggestions can be posted in the "
                           f"[bot support server](https://discord.gg/4B8PwMKwwq).")
 
@@ -105,13 +116,8 @@ async def rating(context):
     message = context.message
     contents = message.content.split()
 
-    if len(contents) == 1:  # -rating TODO: use linked profile
-        embed = discord.Embed(title=f"Rating command", colour=0x00ffff)
-        embed.add_field(name="Show your Lichess ratings:", value=f"\n`{PREFIX}rating [username]` --> show all "
-                                                                 f"ratings and average rating\n`{PREFIX}rating ["
-                                                                 f"username] [gamemode]` --> show rating for a "
-                                                                 f"particular gamemode")
-        await context.send(embed=embed)
+    if len(contents) == 1:  # -rating
+        await all_ratings(context)
         return
 
     username = contents[1]
@@ -200,16 +206,30 @@ async def bestmove(context):
 
 @client.command(pass_context=True)
 async def profile(context):
-    # TODO: optional username, use linked profile
     content = context.message.content.split()
     try:
         username = content[1]
+        await show_profile(context, username=username)
     except IndexError:
-        embed = discord.Embed(title=f"Profile command", colour=0x00ffff)
-        embed.add_field(name="Show a user profile:", value=f"`{PREFIX}profile [username]`")
+        await show_profile(context)
+
+
+@client.command(pass_context=True)
+async def connect(context):
+    content = context.message.content.split()
+    try:
+        username = content[1]
+        await link_profile(context, username=username)
+    except IndexError:
+        embed = discord.Embed(title=f"Connect command", colour=0xff0000)
+        embed.add_field(name="Connect your Lichess account to get more relevant puzzles:",
+                        value=f"`{PREFIX}connect [username]`")
         await context.send(embed=embed)
-        return
-    await show_profile(context, username)
+
+
+@client.command(pass_context=True)
+async def disconnect(context):
+    await unlink_profile(context)
 
 
 class TopGG(discord.ext.commands.Cog):
