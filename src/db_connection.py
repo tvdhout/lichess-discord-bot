@@ -1,3 +1,6 @@
+from typing import Optional
+from config import PREFIX
+import discord
 import mysql.connector
 from discord.ext.commands import Context
 

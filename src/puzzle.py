@@ -24,9 +24,24 @@ async def show_puzzle(context: Context, cursor, puzzle_id: str = '') -> None:
     puzzle_id - by default an empty string, resulting in a random puzzle. People can also enter a particular puzzle ID
     """
 
+    connected = True
     if puzzle_id == '':
-        cursor.execute(f"SELECT PuzzleId from puzzles ORDER BY RAND() LIMIT 1;")
-        puzzle_id = cursor.fetchall()[0][0]  # random puzzle ID
+        try:  # Try fetch a puzzle near the user's puzzle rating
+            discord_uid = str(context.message.author.id)
+            cursor.execute(f"SELECT Rating FROM users WHERE DiscordUid = {discord_uid}")
+            rating = cursor.fetchall()[0][0]
+            if rating == -1:
+                raise ValueError
+            puzzle_query = f"SELECT PuzzleId FROM puzzles " \
+                           f"WHERE Rating BETWEEN {rating-100} AND {rating+200} " \
+                           f"ORDER BY RAND() LIMIT 1;"
+            cursor.execute(puzzle_query)
+            puzzle_id = cursor.fetchall()[0][0]
+        except (IndexError, ValueError) as e:
+            if isinstance(e, IndexError):
+                connected = False  # User has not connected their Lichess account
+            cursor.execute(f"SELECT PuzzleId FROM puzzles ORDER BY RAND() LIMIT 1;")
+            puzzle_id = cursor.fetchall()[0][0]  # random puzzle ID
 
     get_puzzle = f"SELECT FEN, Moves, Rating, Themes FROM puzzles WHERE PuzzleId = '{puzzle_id}';"
 
@@ -36,12 +51,13 @@ async def show_puzzle(context: Context, cursor, puzzle_id: str = '') -> None:
         fen, moves, rating, themes = cursor.fetchall()[0]
         moves = moves.split()
     except IndexError:
-        embed = discord.Embed(colour=0x00ffff)
-        embed.add_field(name=f"Oops!", value=f"I can't find a puzzle with puzzle id '{puzzle_id}.'\n"
+        embed = discord.Embed(title="Puzzle command", colour=0xff0000)
+        embed.add_field(name=f"Oops!", value=f"I can't find a puzzle with puzzle id **{puzzle_id}**.\n"
                                              f"Command usage:\n"
-                                             f"`{PREFIX}puzzle` -> show a random puzzle\n"
-                                             f"`{PREFIX}puzzle [id]` -> show a particular puzzle\n"
-                                             f"`{PREFIX}puzzle rating1-rating2` -> show a random puzzle with a rating "
+                                             f"`{PREFIX}puzzle` → show a random puzzle, or one near your puzzle rating "
+                                             f"when connected with `{PREFIX}connect`\n"
+                                             f"`{PREFIX}puzzle [id]` → show a particular puzzle\n"
+                                             f"`{PREFIX}puzzle rating1-rating2` → show a random puzzle with a rating "
                                              f"between rating1 and rating2.")
         await context.send(embed=embed)
         return
@@ -63,7 +79,7 @@ async def show_puzzle(context: Context, cursor, puzzle_id: str = '') -> None:
 
     embed = discord.Embed(title=f"Find the best move for {color}!\n(puzzle ID: {puzzle_id})",
                           url=f'https://lichess.org/training/{puzzle_id}',
-                          colour=0x00ffff
+                          colour=0xeeeeee if color == 'white' else 0x000000
                           )
 
     puzzle = discord.File(f'{BASE_DIR}/media/puzzle.png', filename="puzzle.png")  # load puzzle as Discord file
@@ -71,6 +87,10 @@ async def show_puzzle(context: Context, cursor, puzzle_id: str = '') -> None:
     embed.add_field(name=f"Answer with `{PREFIX}answer`",
                     value=f"Answer using SAN ({initial_move_san}) or UCI ({initial_move_uci}) notation\n"
                           f"Puzzle difficulty rating: ||**{rating}**||")
+    if not connected:
+        embed.add_field(name=f"Get relevant puzzles:",
+                        value=f"Connect your Lichess account with `{PREFIX}connect` to get puzzles around your "
+                              f"puzzle rating!")
 
     msg = await context.send(file=puzzle, embed=embed)  # send puzzle
 
@@ -124,7 +144,7 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
         puzzle_id, rating, moves, fen, message_id = cursor.fetchall()[0]
         moves = moves.split()
     except IndexError:
-        embed = discord.Embed(title=f"No active puzzle!", colour=0x00ffff)
+        embed = discord.Embed(title=f"No active puzzle!", colour=0xffff00)
         embed.add_field(name="Start a new puzzle", value=f"To start a puzzle use the `{PREFIX}puzzle` command.\n"
                                                          f"Use `{PREFIX}commands` for more options.")
         await context.send(embed=embed)
@@ -132,7 +152,6 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
 
     embed = discord.Embed(title=f"Answering puzzle ID: {puzzle_id}",
                           url=f'https://lichess.org/training/{puzzle_id}',
-                          colour=0x00ffff
                           )
 
     board = chess.Board(fen)
@@ -157,7 +176,8 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
             return False
 
     if is_answer_mate(answer) or is_answer_mate(answer, notation='uci') or is_answer_mate(answer.capitalize()):
-        embed.add_field(name="Correct!", value=f"Yes! {spoiler + answer + spoiler} is checkmate. "
+        embed.colour = 0x00ff00
+        embed.add_field(name="Correct!", value=f"Yes, {spoiler + answer + spoiler} is checkmate! "
                                                f"You completed the puzzle! (difficulty rating {rating})")
         await context.send(embed=embed)
         # Puzzle is done, remove entry from channel_puzzles
@@ -168,6 +188,7 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
 
     if stripped_answer in [correct_uci, stripped_correct_san]:  # Correct answer
         if len(moves) == 1:  # Last step in puzzle
+            embed.colour = 0x00ff00
             embed.add_field(name="Correct!", value=f"Yes! The best move was {spoiler + correct_san + spoiler}. "
                                                    f"You completed the puzzle! (difficulty rating {rating})")
             await context.send(embed=embed)
@@ -187,6 +208,7 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
 
             fen = board.fen()  # Get the FEN of the board with applied moves to use for the next answer
 
+            embed.colour = 0x00ff00
             embed.add_field(name="Correct!",
                             value=f"Yes! The best move was {spoiler + correct_san + spoiler}. The opponent "
                                   f"responded with {spoiler + reply_san + spoiler}, "
@@ -201,6 +223,7 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
 
             cursor.execute(update_query, update_data)
     else:  # Incorrect answer
+        embed.colour = 0xff0000
         embed.add_field(name="Wrong!", value=f"{answer} is not the best move. Try again using `{PREFIX}"
                                              f"answer` or get the answer with `{PREFIX}bestmove`")
 
@@ -225,7 +248,7 @@ async def give_best_move(context: Context, cursor) -> None:
         puzzle_id, rating, moves, fen = cursor.fetchall()[0]
         moves = moves.split()
     except IndexError:
-        embed = discord.Embed(title=f"No active puzzle!", colour=0x00ffff)
+        embed = discord.Embed(title=f"No active puzzle!", colour=0xffff00)
         embed.add_field(name="Start a new puzzle", value=f"To start a puzzle use the `{PREFIX}puzzle` command.\n"
                                                          f"Use `{PREFIX}commands` for more options.")
         await context.send(embed=embed)
@@ -233,7 +256,7 @@ async def give_best_move(context: Context, cursor) -> None:
 
     embed = discord.Embed(title=f"Answering puzzle ID: {puzzle_id}",
                           url=f'https://lichess.org/training/{puzzle_id}',
-                          colour=0x00ffff
+                          colour=0xffff00
                           )
 
     board = chess.Board(fen)

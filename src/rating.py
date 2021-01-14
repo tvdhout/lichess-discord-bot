@@ -2,20 +2,38 @@ import discord
 from discord.ext.commands import Context
 import numpy as np
 import lichess.api
+from config import PREFIX
+import db_connection
 
 
-async def all_ratings(context: Context, username: str, avg_only: bool = False) -> None:
+@db_connection.connect
+async def all_ratings(context: Context, cursor, username: str = None, avg_only: bool = False) -> None:
     """
     Show the ratings for each gamemode and the average rating over ['Bullet', 'Blitz', 'Rapid', 'Classical']
     :param context: context in which to reply
+    :param cursor: mysql.connector cursor to execute MYSQL queries
     :param username: lichess username
     :param avg_only: Only show the average rating over ['Bullet', 'Blitz', 'Rapid', 'Classical']
     :return: Show the embedded ratings
     """
+    if username is None:
+        discord_uid = str(context.message.author.id)
+        try:
+            cursor.execute(f"SELECT LichessName FROM users WHERE DiscordUID = {discord_uid}")
+            username = cursor.fetchall()[0][0]
+        except IndexError:
+            embed = discord.Embed(title="Rating command", colour=0xff0000)
+            embed.add_field(name="No username",
+                            value="To use this command without giving a username, link your Discord profile to your "
+                                  f"Lichess account using `{PREFIX}connect`.\n"
+                                  f"Alternatively, provide a lichess username with `{PREFIX}rating [username]`.")
+            await context.send(embed=embed)
+            return
+
     try:
         user = lichess.api.user(username)
     except lichess.api.ApiHttpError:
-        embed = discord.Embed(title=f"Rating command", colour=0x00ffff)
+        embed = discord.Embed(title=f"Rating command", colour=0xff0000)
         embed.add_field(name="Username not found", value=f"{username} is not an active Lichess account.")
         await context.send(embed=embed)
         return
@@ -64,7 +82,7 @@ async def all_ratings(context: Context, username: str, avg_only: bool = False) -
     await context.send(embed=embed)
 
 
-async def gamemode_rating(context: Context, username: str, gamemode: str) -> None:
+async def gamemode_rating(context: Context, gamemode: str, username: str = None) -> None:
     """
     Show the rating of a given user in a particular gamemode
     :param context: context to reply in
@@ -75,7 +93,7 @@ async def gamemode_rating(context: Context, username: str, gamemode: str) -> Non
     try:
         user = lichess.api.user(username)
     except lichess.api.ApiHttpError:
-        embed = discord.Embed(title=f"Rating command", colour=0x00ffff)
+        embed = discord.Embed(title=f"Rating command", colour=0xff0000)
         embed.add_field(name="Username not found", value=f"{username} is not an active Lichess account.")
         await context.send(embed=embed)
         return
@@ -99,5 +117,6 @@ async def gamemode_rating(context: Context, username: str, gamemode: str) -> Non
     else:
         embed.add_field(name='Error', value=f"I can't find {user['username']}'s {gamemode} rating. The user may not "
                                             f"have played enough games in this mode, or the gamemode doesn't exist.")
+        embed.colour = 0xff0000
 
     await context.send(embed=embed)
