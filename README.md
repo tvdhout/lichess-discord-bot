@@ -5,7 +5,7 @@
 [Click here to invite the bot to your server!](https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permissions=52224&scope=bot)
 
 ## DESCRIPTION
-This bot integrates with the lichess.org chess website. The bot can be used to retrieve ELO rankings for users, query chess puzzles (random / specific / random within a rating range) and more in the making! Any further ideas can be requested as an issue on the GitHub page.
+This bot integrates with the lichess.org chess website. The bot can be used to retrieve ELO rankings for users, query chess puzzles (random / specific / random within a rating range), and connect your discord account to your lichess account for enhanced functionality!
 
 ## PREFIX
 \-
@@ -13,7 +13,7 @@ This bot integrates with the lichess.org chess website. The bot can be used to r
 ## COMMANDS 
 * `-help` or `-commands` → show list of commands
 * `-about` → show information about the bot
-* `-connect` → connect your Discord profile with your Lichess account.
+* `-connect [lichess username]` → connect your Discord profile with your Lichess account.
 * `-disconnect` → disconnect your Discord profile from a connected Lichess account
 * `-rating [username | user url]` → show all chess ratings. When connected with `-connect` you can use this command without giving a username.
 * `-rating [username | user url] [gamemode]` → retrieve the ratings for a user for a specific gamemode
