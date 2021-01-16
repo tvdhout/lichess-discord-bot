@@ -25,7 +25,7 @@ async def on_ready():
     print("Bot id: ", client.user.id)
 
 
-@client.command(pass_context=True)
+@client.command(pass_context=True, aliases=['help'])
 async def commands(context: Context):
     """
     Show list of commands
@@ -46,7 +46,7 @@ async def commands(context: Context):
                           f"`{PREFIX}disconnect` → disconnect your Discord profile from a connected Lichess account",
                     inline=False)
     embed.add_field(name=f":chart_with_upwards_trend: Rating",
-                    value=f"`{PREFIX}rating [username]` →  show all chess ratings. When connected with"
+                    value=f"`{PREFIX}rating [username]` →  show all chess ratings. When connected with "
                           f"`{PREFIX}connect` you can use this command without giving a username."
                           f"\n`{PREFIX}rating [username] [gamemode]` →  show rating for a "
                           f"particular gamemode", inline=False)
@@ -68,14 +68,6 @@ async def commands(context: Context):
                           f"`{PREFIX}connect` you can use this command without giving a username.", inline=False)
 
     await context.send(embed=embed)
-
-
-@client.command(pass_context=True)
-async def help(context):
-    """
-    Alias for commands
-    """
-    await commands(context)
 
 
 @client.command(pass_context=True)
@@ -102,7 +94,7 @@ async def about(context):
     await context.send(embed=embed)
 
 
-@client.command(pass_context=True)
+@client.command(pass_context=True, aliases=['ratings'])
 async def rating(context):
     """
     Retrieve the ratings for a lichess user
@@ -123,18 +115,10 @@ async def rating(context):
     username = contents[1]
 
     if len(contents) == 2:  # !rating [name/url]
-        await all_ratings(context, username)
+        await all_ratings(context, username=username)
     elif len(contents) > 2:  # !rating [name/url] [gamemode]
         gamemode = contents[2]
-        await gamemode_rating(context, username, gamemode)
-
-
-@client.command(pass_context=True)
-async def ratings(context):
-    """
-    Alias for rating
-    """
-    await rating(context)
+        await gamemode_rating(context, gamemode=gamemode, username=username)
 
 
 @client.command(pass_context=True)
@@ -164,7 +148,7 @@ async def puzzle(context: Context):
         await show_puzzle(context)
 
 
-@client.command(pass_context=True)
+@client.command(pass_context=True, aliases=['a', 'asnwer', 'anwser'])
 async def answer(context):
     """
     User provides answers to a puzzle
