@@ -19,13 +19,13 @@ async def all_ratings(context: Context, cursor, username: str = None, avg_only: 
     if username is None:
         discord_uid = str(context.message.author.id)
         try:
-            cursor.execute(f"SELECT LichessName FROM users WHERE DiscordUID = {discord_uid}")
+            cursor.execute("SELECT LichessName FROM users WHERE DiscordUID = %s", (discord_uid,))
             username = cursor.fetchall()[0][0]
         except IndexError:
             embed = discord.Embed(title="Rating command", colour=0xff0000)
             embed.add_field(name="No username",
                             value="To use this command without giving a username, link your Discord profile to your "
-                                  f"Lichess account using `{PREFIX}connect`.\n"
+                                  f"Lichess account using `{PREFIX}connect [username]`.\n"
                                   f"Alternatively, provide a lichess username with `{PREFIX}rating [username]`.")
             await context.send(embed=embed)
             return
