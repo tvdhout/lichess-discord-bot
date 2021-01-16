@@ -123,10 +123,10 @@ async def rating(context):
     username = contents[1]
 
     if len(contents) == 2:  # !rating [name/url]
-        await all_ratings(context, username)
+        await all_ratings(context, username=username)
     elif len(contents) > 2:  # !rating [name/url] [gamemode]
         gamemode = contents[2]
-        await gamemode_rating(context, username, gamemode)
+        await gamemode_rating(context, gamemode=gamemode, username=username)
 
 
 @client.command(pass_context=True)
