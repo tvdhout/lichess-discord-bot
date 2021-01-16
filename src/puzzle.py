@@ -28,14 +28,14 @@ async def show_puzzle(context: Context, cursor, puzzle_id: str = '') -> None:
     if puzzle_id == '':
         try:  # Try fetch a puzzle near the user's puzzle rating
             discord_uid = str(context.message.author.id)
-            cursor.execute(f"SELECT Rating FROM users WHERE DiscordUid = {discord_uid}")
+            cursor.execute(f"SELECT Rating FROM users WHERE DiscordUid = %s", (discord_uid,))
             rating = cursor.fetchall()[0][0]
             if rating == -1:
                 raise ValueError
-            puzzle_query = f"SELECT PuzzleId FROM puzzles " \
-                           f"WHERE Rating BETWEEN {rating-100} AND {rating+200} " \
-                           f"ORDER BY RAND() LIMIT 1;"
-            cursor.execute(puzzle_query)
+            puzzle_query = "SELECT PuzzleId FROM puzzles " \
+                           "WHERE Rating BETWEEN %s AND %s " \
+                           "ORDER BY RAND() LIMIT 1;"
+            cursor.execute(puzzle_query, (rating-100, rating+200))
             puzzle_id = cursor.fetchall()[0][0]
         except (IndexError, ValueError) as e:
             if isinstance(e, IndexError):
@@ -43,9 +43,9 @@ async def show_puzzle(context: Context, cursor, puzzle_id: str = '') -> None:
             cursor.execute(f"SELECT PuzzleId FROM puzzles ORDER BY RAND() LIMIT 1;")
             puzzle_id = cursor.fetchall()[0][0]  # random puzzle ID
 
-    get_puzzle = f"SELECT FEN, Moves, Rating, Themes FROM puzzles WHERE PuzzleId = '{puzzle_id}';"
+    get_puzzle = "SELECT FEN, Moves, Rating, Themes FROM puzzles WHERE PuzzleId = %s;"
 
-    cursor.execute(get_puzzle)
+    cursor.execute(get_puzzle, (puzzle_id,))
 
     try:
         fen, moves, rating, themes = cursor.fetchall()[0]
@@ -97,7 +97,7 @@ async def show_puzzle(context: Context, cursor, puzzle_id: str = '') -> None:
     # Set current puzzle as active for this channel.
     channel_puzzle = ("INSERT INTO channel_puzzles "
                       "(ChannelId, PuzzleId, Moves, FEN, MessageId) "
-                      f"VALUES (%s, %s, %s, %s, %s) "
+                      "VALUES (%s, %s, %s, %s, %s) "
                       "ON DUPLICATE KEY UPDATE PuzzleId = VALUES(PuzzleId), "
                       "Moves = VALUES(Moves), FEN = VALUES(FEN), MessageId = VALUES(MessageId)")
     data_puzzle = (str(context.message.channel.id), str(puzzle_id), ' '.join(moves), str(fen), str(msg.id))
@@ -113,8 +113,8 @@ async def puzzle_by_rating(context: Context, cursor, low: int, high: int):
     if low > high:
         low, high = high, low
 
-    get_puzzle = f"SELECT PuzzleId FROM puzzles WHERE Rating BETWEEN {low} AND {high}"
-    cursor.execute(get_puzzle)
+    get_puzzle = "SELECT PuzzleId FROM puzzles WHERE Rating BETWEEN %s AND %s"
+    cursor.execute(get_puzzle, (low, high))
     try:
         puzzle_id = random.choice(cursor.fetchall())[0]
     except IndexError:
@@ -135,9 +135,9 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
     answer - the move the user provided
     """
     # Fetch the active puzzle from the channel_puzzles table
-    get_puzzle = f"SELECT puzzles.PuzzleId, Rating, channel_puzzles.Moves, channel_puzzles.FEN, MessageId " \
-                 f"FROM channel_puzzles LEFT JOIN puzzles ON channel_puzzles.PuzzleId = puzzles.PuzzleId " \
-                 f"WHERE ChannelId = %s;"
+    get_puzzle = "SELECT puzzles.PuzzleId, Rating, channel_puzzles.Moves, channel_puzzles.FEN, MessageId " \
+                 "FROM channel_puzzles LEFT JOIN puzzles ON channel_puzzles.PuzzleId = puzzles.PuzzleId " \
+                 "WHERE ChannelId = %s;"
     cursor.execute(get_puzzle, (str(context.channel.id),))
 
     try:
@@ -181,8 +181,8 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
                                                f"You completed the puzzle! (difficulty rating {rating})")
         await context.send(embed=embed)
         # Puzzle is done, remove entry from channel_puzzles
-        delete_puzzle = (f"DELETE FROM channel_puzzles "
-                         f"WHERE ChannelId = %s;")
+        delete_puzzle = ("DELETE FROM channel_puzzles "
+                         "WHERE ChannelId = %s;")
         cursor.execute(delete_puzzle, (str(context.channel.id),))
         return
 
@@ -192,8 +192,8 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
             embed.add_field(name="Correct!", value=f"Yes! The best move was {spoiler + correct_san + spoiler}. "
                                                    f"You completed the puzzle! (difficulty rating {rating})")
             await context.send(embed=embed)
-            delete_puzzle = (f"DELETE FROM channel_puzzles "
-                             f"WHERE ChannelId = %s;")
+            delete_puzzle = ("DELETE FROM channel_puzzles "
+                             "WHERE ChannelId = %s;")
             cursor.execute(delete_puzzle, (str(context.channel.id),))
             return
         else:  # Not the last step in puzzle
@@ -216,9 +216,9 @@ async def answer_puzzle(context: Context, cursor, answer: str) -> None:
             await context.send(embed=embed)
 
             # Update the moves list and FEN in the channel_puzzles table
-            update_query = (f"UPDATE channel_puzzles "
-                            f"SET Moves = %s, FEN = %s "
-                            f"WHERE ChannelId = %s;")
+            update_query = ("UPDATE channel_puzzles "
+                            "SET Moves = %s, FEN = %s "
+                            "WHERE ChannelId = %s;")
             update_data = (' '.join(moves), str(fen), str(context.message.channel.id))
 
             cursor.execute(update_query, update_data)
@@ -239,9 +239,9 @@ async def give_best_move(context: Context, cursor) -> None:
     message - the command entered by the user, used as a context to know which channel to post the reply to
     """
 
-    get_puzzle = f"SELECT puzzles.PuzzleId, Rating, channel_puzzles.Moves, channel_puzzles.FEN " \
-                 f"FROM channel_puzzles LEFT JOIN puzzles ON channel_puzzles.PuzzleId = puzzles.PuzzleId " \
-                 f"WHERE ChannelId = %s;"
+    get_puzzle = "SELECT puzzles.PuzzleId, Rating, channel_puzzles.Moves, channel_puzzles.FEN " \
+                 "FROM channel_puzzles LEFT JOIN puzzles ON channel_puzzles.PuzzleId = puzzles.PuzzleId " \
+                 "WHERE ChannelId = %s;"
     cursor.execute(get_puzzle, (str(context.channel.id),))
 
     try:
@@ -275,15 +275,15 @@ async def give_best_move(context: Context, cursor) -> None:
         await context.send(embed=embed)
 
         fen = board.fen()  # Updated FEN with the move played, to use in the next step
-        update_query = (f"UPDATE channel_puzzles "
-                        f"SET Moves = %s, FEN = %s "
-                        f"WHERE ChannelId = %s;")
+        update_query = ("UPDATE channel_puzzles "
+                        "SET Moves = %s, FEN = %s "
+                        "WHERE ChannelId = %s;")
         update_data = (' '.join(moves), str(fen), str(context.channel.id))
         cursor.execute(update_query, update_data)
     else:  # End of the puzzle
         embed.add_field(name="Answer", value=f"The best move is ||{san_move}||. That's the end of the puzzle! "
                                              f"(difficulty rating {rating})")
         await context.send(embed=embed)
-        delete_puzzle = (f"DELETE FROM channel_puzzles "
-                         f"WHERE ChannelId = %s;")
+        delete_puzzle = ("DELETE FROM channel_puzzles "
+                         "WHERE ChannelId = %s;")
         cursor.execute(delete_puzzle, (str(context.channel.id),))

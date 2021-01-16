@@ -12,13 +12,13 @@ async def show_profile(context: Context, cursor, username: str = None) -> None:
     if username is None:
         discord_uid = str(context.message.author.id)
         try:
-            cursor.execute(f"SELECT LichessName FROM users WHERE DiscordUID = {discord_uid}")
+            cursor.execute("SELECT LichessName FROM users WHERE DiscordUID = %s", (discord_uid,))
             username = cursor.fetchall()[0][0]
         except IndexError:
             embed = discord.Embed(title="Profile command", colour=0xff0000)
             embed.add_field(name="No username",
                             value="To use this command without giving a username, link your Discord profile to your "
-                                  f"Lichess account using `{PREFIX}connect`.\n"
+                                  f"Lichess account using `{PREFIX}connect [username]`.\n"
                                   f"Alternatively, provide a lichess username with `{PREFIX}profile [username]`.")
             await context.send(embed=embed)
             return
@@ -111,8 +111,8 @@ async def link_profile(context: Context, cursor, username: str) -> None:
 
     query = ("INSERT INTO users "
              "(DiscordUID, LichessName, Rating) "
-             f"VALUES (%s, %s, %s) "
-             f"ON DUPLICATE KEY UPDATE LichessName = VALUES(LichessName), Rating = VALUES(Rating)")
+             "VALUES (%s, %s, %s) "
+             "ON DUPLICATE KEY UPDATE LichessName = VALUES(LichessName), Rating = VALUES(Rating)")
     cursor.execute(query, (str(discord_uid), str(username), int(puzzle_rating)))
 
 
@@ -122,8 +122,8 @@ async def unlink_profile(context: Context, cursor):
     discord_uid = str(author.id)
     embed = discord.Embed(title=f"Disconnecting '{author.display_name}'", colour=0x00ff00)
 
-    query = f"DELETE FROM users WHERE DiscordUID = {discord_uid}"
-    cursor.execute(query)
+    query = "DELETE FROM users WHERE DiscordUID = %s"
+    cursor.execute(query, (discord_uid,))
     n_rows = cursor.rowcount
     message = "You are no longer connected to a Lichess account" if n_rows == 1 else "You were not connected to a " \
                                                                                      "Lichess account."
