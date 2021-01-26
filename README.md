@@ -5,7 +5,7 @@
 [Click here to invite the bot to your server!](https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permissions=52224&scope=bot)
 
 ## DESCRIPTION
-This bot integrates with the lichess.org chess website. The bot can be used to retrieve ELO rankings for users, query chess puzzles (random / specific / random within a rating range), and connect your discord account to your lichess account for enhanced functionality!
+This bot integrates with the lichess.org chess website. The bot can show chess puzzles which can be solved right there in the channel! It can also retrieve ELO rankings for users, show user profiles, and connect your discord account to your lichess account for enhanced functionality!
 
 ## PREFIX
 \-
