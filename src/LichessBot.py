@@ -20,7 +20,7 @@ class LichessBot(commands.Bot):
         print("Bot id: ", self.user.id)
 
     async def on_command_error(self, context, exception):
-        if isinstance(exception, commands.CommandNotFound):
+        if isinstance(exception, (commands.CommandNotFound, commands.NoPrivateMessage)):
             return
         raise exception
 
