@@ -30,7 +30,7 @@ if __name__ == '__main__':
         db_connection = mysql.connector.connect(user='thijs', host='localhost', database='lichess')
 
         try:
-            config = Config(release=False)
+            config = Config(release=True)
 
             client: LichessBot = LichessBot(conf=config, connection=db_connection, command_prefix=config.prefix)
             client.remove_command('help')  # remove default help command
@@ -41,8 +41,8 @@ if __name__ == '__main__':
                 client.load_extension(extension)
 
             client.run(config.token)
-        except Exception as e:
-            raise e
+        except KeyboardInterrupt as e:
+            print("Stopping Lichess bot.")
         finally:  # Gracefully close the connection
             db_connection.commit()
             db_connection.close()

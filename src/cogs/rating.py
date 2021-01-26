@@ -1,3 +1,5 @@
+from typing import Optional
+
 import discord
 from discord.ext import commands
 from discord.ext.commands import Context
@@ -15,12 +17,12 @@ class Ratings(commands.Cog):
     async def rating(self, context):
         """
         Entrypoint for the rating command
-
-        _________
         Usage:
         !rating [username] - Retrieves the rating for user in every gamemode, with an average
         !rating [username] [gamemode] - Retrieves the rating for user in a particular gamemode
         !rating [username] average - Retrieves the average rating over Bullet, Blitz, Rapid and Classical
+        @param context: ~Context: The context of the command
+        @return:
         """
         message = context.message
         contents = message.content.split()
@@ -37,15 +39,14 @@ class Ratings(commands.Cog):
             gamemode = contents[2]
             await self.gamemode_rating(context, gamemode=gamemode, username=username)
 
-    async def all_ratings(self, context: Context, username: str = None, avg_only: bool = False) -> None:
+    async def all_ratings(self, context: Context, username: Optional[str] = None) -> None:
         """
-        Show the ratings for each gamemode and the average rating over ['Bullet', 'Blitz', 'Rapid', 'Classical']
-        :param context: context in which to reply
-        :param username: lichess username
-        :param avg_only: Only show the average rating over ['Bullet', 'Blitz', 'Rapid', 'Classical']
-        :return: Show the embedded ratings
+        Show the ratings of a particular user in an embed.
+        @param context: ~Context: The context of the command
+        @param username: Optional[str]: Lichess username for which to look up the rating. If none, check if this discord
+        user has a Lichess account connected to it.
+        @return:
         """
-
         if username is None:
             discord_uid = str(context.message.author.id)
             try:
@@ -72,13 +73,9 @@ class Ratings(commands.Cog):
             await context.send(embed=embed)
             return
 
-        embed = discord.Embed(title=f"{username}'s {'average' if avg_only else ''} rating{'' if avg_only else 's'}",
-                              url=f"https://lichess.org/@/{username}",
-                              colour=0x00ffff
-                              )
-        embed.set_thumbnail(
-            url='https://raw.githubusercontent.com/tvdhout/Lichess-discord-bot/master/media/lichesslogo.'
-                'png')
+        embed = discord.Embed(title=f"{username}'s ratings", url=f"https://lichess.org/@/{username}", colour=0x00ffff)
+        embed.set_thumbnail(url='https://raw.githubusercontent.com/tvdhout/Lichess-discord-bot/master/media'
+                                '/lichesslogo.png')
 
         ratings = user['perfs']
         normal_modes = ['bullet', 'blitz', 'rapid', 'classical']
@@ -95,19 +92,17 @@ class Ratings(commands.Cog):
             if provisional:
                 average_provisional = True
 
-            if not avg_only:
-                embed.add_field(name=mode.capitalize(), value=f"**{rating}{'?' * provisional}** ({n_games} games)",
-                                inline=True)
+            embed.add_field(name=mode.capitalize(), value=f"**{rating}{'?' * provisional}** ({n_games} games)",
+                            inline=True)
 
-        if not avg_only:
-            for mode in ratings:
-                if mode in normal_modes:
-                    continue
-                embed.add_field(name=mode.capitalize(),
-                                value=f"{ratings[mode]['rating']}{'?' * ('prov' in ratings[mode])} "
-                                      f"({ratings[mode]['games']} "
-                                      f"{'puzzles' if mode == 'puzzle' else 'games'})",
-                                inline=True)
+        for mode in ratings:
+            if mode in normal_modes:
+                continue
+            embed.add_field(name=mode.capitalize(),
+                            value=f"{ratings[mode]['rating']}{'?' * ('prov' in ratings[mode])} "
+                                  f"({ratings[mode]['games']} "
+                                  f"{'puzzles' if mode == 'puzzle' else 'games'})",
+                            inline=True)
 
         if sum(average_weights) == 0:
             average_weights = [1] * len(average_weights)
@@ -117,13 +112,13 @@ class Ratings(commands.Cog):
 
         await context.send(embed=embed)
 
-    async def gamemode_rating(self, context: Context, gamemode: str, username: str = None) -> None:
+    async def gamemode_rating(self, context: Context, gamemode: str, username: Optional[str] = None) -> None:
         """
         Show the rating of a given user in a particular gamemode
-        :param context: context to reply in
-        :param username: lichess usename
-        :param gamemode: which rating to check
-        :return: send the embedded message, return nothing
+        @param context:
+        @param gamemode:
+        @param username:
+        @return:
         """
         try:
             user = lichess.api.user(username)
@@ -131,10 +126,6 @@ class Ratings(commands.Cog):
             embed = discord.Embed(title=f"Rating command", colour=0xff0000)
             embed.add_field(name="Username not found", value=f"{username} is not an active Lichess account.")
             await context.send(embed=embed)
-            return
-
-        if gamemode.lower() == 'average':
-            await self.all_ratings(context, username, avg_only=True)
             return
 
         embed = discord.Embed(title=f"{username}'s rating",
