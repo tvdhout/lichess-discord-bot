@@ -11,11 +11,9 @@ class Help(commands.Cog):
     @commands.command(name="help", aliases=["commands"])
     async def help_menu(self, context: Context):
         """
-        Show list of commands
-
-        _________
-        Usage
-        !commands
+        Help command, show support server and command usage.
+        @param context: ~Context: The context of the command
+        @return:
         """
         embed = discord.Embed(title=f"Commands", colour=0x000000)
         embed.add_field(name=f":question: Support", value=f"For help, issues or suggestions, join the "
@@ -59,23 +57,25 @@ class Help(commands.Cog):
     @commands.command(name="about")
     async def about(self, context):
         """
-        Show information about this bot
-
-        _________
-        Usage:
-        !about
+        Command to show information about this bot.
+        @param context: ~Context: The context of the command
+        @return:
         """
         embed = discord.Embed(title=f"Lichess Discord bot", colour=0x000000,
                               url="https://github.com/tvdhout/Lichess-discord-bot")
+        embed.set_footer(text="Made by Thijs#9356",
+                         icon_url="https://cdn.discordapp.com/avatars/289163010835087360"
+                                  "/f7874fb1b63d84359307b8736f559355.webp?size=128")
         embed.add_field(name="About me",
-                        value=f"I am a bot created by Thijs#9356 and I can obtain various lichess-related "
-                              f"pieces of information for you. You can see how I work "
-                              f"[on the GitHub page](https://github.com/tvdhout/Lichess-discord-bot). "
-                              f"You can invite me to your own server from "
-                              f"[this page](https://top.gg/bot/707287095911120968). "
+                        value=f"I am a bot that can show Lichess puzzles for you to solve right there in the channel. "
+                              f"I can also obtain various lichess-related pieces of information for you. You can see "
+                              f"how I work [on the GitHub page](https://github.com/tvdhout/Lichess-discord-bot). "
+                              f"You can invite me to your own server using "
+                              f"[this link](https://discord.com/oauth2/authorize?client_id=707287095911120968"
+                              f"&permissions=52224&scope=bot). "
                               f"Check out what I can do using `{self.client.config.prefix}commands`. "
                               f"Any issues or suggestions can be posted in the "
-                              f"[bot support server](https://discord.gg/4B8PwMKwwq).")
+                              f"[bot support discord server](https://discord.gg/4B8PwMKwwq).")
 
         await context.send(embed=embed)
 

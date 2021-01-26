@@ -1,3 +1,5 @@
+from typing import Optional
+
 import lichess.api
 import discord
 from discord.ext import commands
@@ -12,6 +14,11 @@ class Profile(commands.Cog):
 
     @commands.command(name="profile")
     async def profile(self, context: Context):
+        """
+        Entrypoint for the profile command. Shows a Lichess user profile
+        @param context: ~Context: The context of the command
+        @return:
+        """
         content = context.message.content.split()
         try:
             username = content[1]
@@ -21,6 +28,11 @@ class Profile(commands.Cog):
 
     @commands.command(name="connect")
     async def connect(self, context: Context):
+        """
+        Entrypoint for the connect command. Connect a discord user to a Lichess account.
+        @param context: ~Context: The context of the command
+        @return:
+        """
         content = context.message.content.split()
         try:
             username = content[1]
@@ -33,9 +45,21 @@ class Profile(commands.Cog):
 
     @commands.command(name="disconnect")
     async def disconnect(self, context: Context):
+        """
+        Entrypoint for the disconnect command. Disconnect the discord user from a linked Lichess account.
+        @param context: ~Context: The context of the command
+        @return:
+        """
         await self.unlink_profile(context)
 
-    async def show_profile(self, context: Context, username: str = None) -> None:
+    async def show_profile(self, context: Context, username: Optional[str] = None) -> None:
+        """
+        Show the profile of a Lichess account in an embed.
+        @param context: ~Context: The context of the command
+        @param username: Optional[str]: The username for which to show the profile. If none, search for a connected
+        Lichess account for this discord user.
+        @return:
+        """
         cursor = self.client.connection.cursor(buffered=True)
         if username is None:
             discord_uid = str(context.message.author.id)
@@ -102,6 +126,12 @@ class Profile(commands.Cog):
         cursor.close()
 
     async def link_profile(self, context: Context, username: str) -> None:
+        """
+        Connect the discord user to a Lichess account.
+        @param context: ~Context: The context of the command
+        @param username: str: The Lichess account name to connect to the discord user issuing the command
+        @return:
+        """
         cursor = self.client.connection.cursor(buffered=True)
         username = username.replace('[', '').replace(']', '')  # for dummies
         author = context.message.author
@@ -150,6 +180,11 @@ class Profile(commands.Cog):
         cursor.close()
 
     async def unlink_profile(self, context: Context):
+        """
+        Disconnect the discord user from any linked Lichess account
+        @param context: ~Context: The context of the command
+        @return:
+        """
         cursor = self.client.connection.cursor(buffered=True)
         author = context.message.author
         discord_uid = str(author.id)
