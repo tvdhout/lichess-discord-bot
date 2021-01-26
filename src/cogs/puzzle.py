@@ -1,3 +1,5 @@
+from typing import Optional
+
 import discord
 from discord.ext import commands
 from discord.ext.commands import Context
@@ -15,15 +17,15 @@ class Puzzles(commands.Cog):
     def __init__(self, client: LichessBot):
         self.client = client
 
-    @commands.command(name='puzzle', aliases=['puzle'])
+    @commands.command(name='puzzle')
     async def puzzle(self, context: Context):
         """
         Entrypoint of the puzzle command
-
-        _________
         Usage:
         !puzzle - Shows a random puzzle
         !puzzle [id] - Shows a specific puzzle (https://lichess.org/training/[id])
+        @param context: ~Context: The context of the command
+        @return:
         """
         message = context.message
         if message.author == self.client.user:
@@ -45,14 +47,13 @@ class Puzzles(commands.Cog):
     async def answer(self, context):
         """
         Entrypoint for the answer command
-
-        _________
         Usage:
         !answer [move] - Provide [move] as the best move for the position in the last shown puzzle. Provide moves in the
                          standard algebraic notation (Qxb7+, e4, Bxb2 etc). Check (+) and checkmate (#) notation is
                          optional
+        @param context: ~Context: The context of the command
+        @return:
         """
-
         message = context.message
         if message.author == self.client.user:
             return
@@ -65,15 +66,14 @@ class Puzzles(commands.Cog):
                                                            f"`{self.client.config.prefix}answer [answer]`")
             await context.send(embed=embed)
         else:
-            await self.answer_puzzle(context, answer=contents[1])
+            await self.answer_puzzle(context, answer=" ".join(contents[1:]))
 
     @commands.command(name='bestmove')
     async def give_best_move(self, context: Context):
         """
-        Give the best move for the last posted puzzle.
-        Parameters
-        ----------
-        message - the command entered by the user, used as a context to know which channel to post the reply to
+        Give the best move to in the currently active puzzle in this channel.
+        @param context: ~Context: The context of the command
+        @return:
         """
         cursor = self.client.connection.cursor(buffered=True)
 
@@ -129,15 +129,13 @@ class Puzzles(commands.Cog):
         self.client.connection.commit()
         cursor.close()
 
-    async def show_puzzle(self, context: Context, puzzle_id: str = '') -> None:
+    async def show_puzzle(self, context: Context, puzzle_id: Optional[str] = None) -> None:
         """
-        Show a puzzle
-    
-        Parameters
-        ----------
-        message - the command entered by the user, used as a context to know which channel to post the reply to
-        cursor - mysql.connector cursor given by the connect decorator
-        puzzle_id - by default an empty string, resulting in a random puzzle. People can enter a particular puzzle ID
+        Show a Lichess puzzle. If a puzzle ID is given, show that puzzle. If the user if connected, show a puzzle with
+        a rating around their puzzle rating. Otherwise show a random puzzle.
+        @param context: ~Context: The context of the command
+        @param puzzle_id: Optional[str]: Optional puzzle ID
+        @return:
         """
         cursor = self.client.connection.cursor(buffered=True)
         connected = True
@@ -234,6 +232,13 @@ class Puzzles(commands.Cog):
         cursor.close()
 
     async def puzzle_by_rating(self, context: Context, low: int, high: int):
+        """
+        Show a puzzle in a specific rating range, when user uses -puzzle low-high
+        @param context: ~Context: The context of the command
+        @param low: int: lower bound for puzzle rating
+        @param high: int: upper bound for puzzle rating
+        @return:
+        """
         cursor = self.client.connection.cursor(buffered=True)
         if low > high:
             low, high = high, low
@@ -254,12 +259,10 @@ class Puzzles(commands.Cog):
 
     async def answer_puzzle(self, context: Context, answer: str) -> None:
         """
-        User can provide an answer to the last posted puzzle
-    
-        Parameters
-        ----------
-        message - the command entered by the user, used as a context to know which channel to post the reply to
-        answer - the move the user provided
+        Parse an answer to the active puzzle in the current channel given with -answer [answer]
+        @param context: ~Context: The context of the command
+        @param answer: str: The given answer to the puzzle in SAN or UCI format
+        @return:
         """
         cursor = self.client.connection.cursor(buffered=True)
         # Fetch the active puzzle from the channel_puzzles table
@@ -283,15 +286,21 @@ class Puzzles(commands.Cog):
                               url=f'https://lichess.org/training/{puzzle_id}',
                               )
 
+        # Set up the puzzle using the chess library. Used to parse answers, and to create a puzzle screenshot.
         board = chess.Board(fen)
         spoiler = '||' if answer.startswith('||') else ''
-        stripped_answer = re.sub(r'[|#+x]', '', answer.lower())
+        stripped_answer = re.sub(r'[ |#+x]', '', answer.lower())
         correct_uci = moves[0]
         correct_san = board.san(board.parse_uci(correct_uci))
         stripped_correct_san = re.sub(r'[|#+x]', '', correct_san.lower())
 
-        # If the given answer is any checkmating move, it is correct no matter what the puzzle move is.
         def is_answer_mate(a: str, notation: str = 'san') -> bool:
+            """
+            Determine if a given answer is checkmate on the current board.
+            @param a: str: The given answer
+            @param notation: SAN or UCI notation of the answer
+            @return: bool: checkmate or not
+            """
             try:
                 if notation == 'san':
                     board.push_san(a)
@@ -304,18 +313,7 @@ class Puzzles(commands.Cog):
             except ValueError:  # invalid move
                 return False
 
-        if is_answer_mate(answer) or is_answer_mate(answer, notation='uci') or is_answer_mate(answer.capitalize()):
-            embed.colour = 0x00ff00
-            embed.add_field(name="Correct!", value=f"Yes, {spoiler + answer + spoiler} is checkmate! "
-                                                   f"You completed the puzzle! (difficulty rating {rating})")
-            await context.send(embed=embed)
-            # Puzzle is done, remove entry from channel_puzzles
-            delete_puzzle = ("DELETE FROM channel_puzzles "
-                             "WHERE ChannelId = %s;")
-            cursor.execute(delete_puzzle, (str(context.channel.id),))
-            return
-
-        if stripped_answer in [correct_uci, stripped_correct_san]:  # Correct answer
+        if stripped_answer in [correct_uci, stripped_correct_san]:  # Correct answer as per the puzzle solution
             if len(moves) == 1:  # Last step in puzzle
                 embed.colour = 0x00ff00
                 embed.add_field(name="Correct!", value=f"Yes! The best move was {spoiler + correct_san + spoiler}. "
@@ -351,6 +349,17 @@ class Puzzles(commands.Cog):
                 update_data = (' '.join(moves), str(fen), str(context.message.channel.id))
 
                 cursor.execute(update_query, update_data)
+        # Check if the given answer is mate: check the plain answer, check it in UCI notation, and capitalized
+        elif is_answer_mate(answer) or is_answer_mate(answer, notation='uci') or is_answer_mate(answer.capitalize()):
+            embed.colour = 0x00ff00
+            embed.add_field(name="Correct!", value=f"Yes, {spoiler + answer + spoiler} is checkmate! "
+                                                   f"You completed the puzzle! (difficulty rating {rating})")
+            await context.send(embed=embed)
+            # Puzzle is done, remove entry from channel_puzzles
+            delete_puzzle = ("DELETE FROM channel_puzzles "
+                             "WHERE ChannelId = %s;")
+            cursor.execute(delete_puzzle, (str(context.channel.id),))
+            return
         else:  # Incorrect answer
             embed.colour = 0xff0000
             embed.add_field(name="Wrong!",
