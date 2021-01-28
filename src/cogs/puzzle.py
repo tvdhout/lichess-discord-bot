@@ -139,7 +139,7 @@ class Puzzles(commands.Cog):
         """
         cursor = self.client.connection.cursor(buffered=True)
         connected = True
-        if puzzle_id == '':
+        if puzzle_id is None:
             try:  # Try fetch a puzzle near the user's puzzle rating
                 discord_uid = str(context.message.author.id)
                 cursor.execute(f"SELECT Rating FROM users WHERE DiscordUid = %s", (discord_uid,))
