@@ -4,6 +4,7 @@ class Config:
         self.prefix: str = ""
         self.token: str = ""
         self.base_dir: str = '/home/thijs/Lichess-discord-bot'
+        self.top_gg_token = open('/etc/topggtoken.txt', 'r').read()
         self._set_config()
 
     def _set_config(self):
