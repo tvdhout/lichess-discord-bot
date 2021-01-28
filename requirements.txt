@@ -8,6 +8,7 @@ cffi==1.14.4
 chardet==3.0.4
 chess==1.4.0
 cssselect2==0.4.1
+dblpy==0.4.0
 defusedxml==0.6.0
 discord==1.0.1
 discord.py==1.6.0
@@ -19,6 +20,7 @@ Pillow==8.1.0
 protobuf==3.14.0
 pycparser==2.20
 python-lichess==0.9
+ratelimiter==1.2.0.post0
 requests==2.25.1
 six==1.15.0
 tinycss2==1.1.0
