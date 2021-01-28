@@ -96,13 +96,16 @@ class Ratings(commands.Cog):
                             inline=True)
 
         for mode in ratings:
-            if mode in normal_modes:
+            try:
+                if mode in normal_modes:
+                    continue
+                embed.add_field(name=mode.capitalize(),
+                                value=f"{ratings[mode]['rating']}{'?' * ('prov' in ratings[mode])} "
+                                      f"({ratings[mode]['games']} "
+                                      f"{'puzzles' if mode == 'puzzle' else 'games'})",
+                                inline=True)
+            except KeyError:
                 continue
-            embed.add_field(name=mode.capitalize(),
-                            value=f"{ratings[mode]['rating']}{'?' * ('prov' in ratings[mode])} "
-                                  f"({ratings[mode]['games']} "
-                                  f"{'puzzles' if mode == 'puzzle' else 'games'})",
-                            inline=True)
 
         if sum(average_weights) == 0:
             average_weights = [1] * len(average_weights)
