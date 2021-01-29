@@ -3,7 +3,6 @@ from typing import Optional
 import discord
 from discord.ext import commands
 from discord.ext.commands import Context
-import random
 import re
 import os
 import chess
@@ -30,18 +29,18 @@ class Puzzles(commands.Cog):
         message = context.message
         if message.author == self.client.user:
             return
-        prefix = '\\' + self.client.config.prefix if self.client.config.prefix in '*+()&^$[]{}?\\.' else \
-            self.client.config.prefix  # escape prefix character to not break the regex
-        match = re.match(rf'^{prefix}puzzle +\[?(\d+)]* *[ _\-] *\[?(\d+)]?$', message.content)
         contents = message.content.split()
+        if len(contents) == 1:
+            await self.show_puzzle(context)
+            return
+        prefix = '\\' + self.client.config.prefix
+        match = re.match(rf'^{prefix}puzzle +\[?(\d+)]* *[ _\-] *\[?(\d+)]?$', message.content)
         if match is not None:  # -puzzle rating1 - rating2
             low = int(match.group(1))
             high = int(match.group(2))
             await self.puzzle_by_rating(context, low=low, high=high)
         elif len(contents) == 2:
             await self.show_puzzle(context, puzzle_id=contents[1])
-        else:
-            await self.show_puzzle(context)
 
     @commands.command(name='answer', aliases=['a', 'asnwer', 'anwser'])
     async def answer(self, context):
@@ -139,47 +138,54 @@ class Puzzles(commands.Cog):
         """
         cursor = self.client.connection.cursor(buffered=True)
         connected = True
-        if puzzle_id == '':
+        if puzzle_id is None:
             try:  # Try fetch a puzzle near the user's puzzle rating
                 discord_uid = str(context.message.author.id)
                 cursor.execute(f"SELECT Rating FROM users WHERE DiscordUid = %s", (discord_uid,))
                 rating = cursor.fetchall()[0][0]  # raises IndexError if user does not exist in table
                 if rating == -1:
                     raise ValueError
-                puzzle_query = "SELECT PuzzleId FROM puzzles " \
-                               "WHERE Rating BETWEEN %s AND %s " \
-                               "ORDER BY RAND() LIMIT 1;"
-                cursor.execute(puzzle_query, (rating - 100, rating + 200))
-                puzzle_id = cursor.fetchall()[0][0]
+                # Random PuzzleId
+                puzzle_query = "WITH filtered AS (SELECT * FROM puzzles WHERE Rating BETWEEN %s AND %s)  " \
+                               "SELECT PuzzleId, FEN, Moves, Rating, Themes " \
+                               "FROM filtered " \
+                               "JOIN (SELECT CEIL(RAND() * (SELECT MAX(id) FROM filtered)) AS rand_id) " \
+                               "AS tmp " \
+                               "WHERE filtered.id >= tmp.rand_id " \
+                               "ORDER BY filtered.id ASC  LIMIT 1;"
+                query_data = (rating-50, rating+100)
             except (IndexError, ValueError) as e:
                 if isinstance(e, IndexError):
                     connected = False  # User has not connected their Lichess account
                 # Grab a random puzzle efficiently
-                cursor.execute(f"SELECT MAX(id) FROM puzzles;")
-                max_id = cursor.fetchall()[0][0]  # random puzzle ID
-                random_id = random.randint(1, max_id)
-                cursor.execute(f"SELECT PuzzleId FROM puzzles WHERE id = %s", (random_id,))
-                puzzle_id = cursor.fetchall()[0][0]
-
-        get_puzzle = "SELECT FEN, Moves, Rating, Themes FROM puzzles WHERE PuzzleId = %s;"
-
-        cursor.execute(get_puzzle, (puzzle_id,))
-
-        try:
-            fen, moves, rating, themes = cursor.fetchall()[0]
+                puzzle_query = "SELECT PuzzleId, FEN, Moves, Rating, Themes " \
+                               "FROM puzzles " \
+                               "JOIN (SELECT CEIL(RAND() * (SELECT MAX(id) FROM puzzles)) AS rand_id) " \
+                               "AS tmp " \
+                               "WHERE puzzles.id >= tmp.rand_id " \
+                               "LIMIT 1;"
+                query_data = tuple()
+            cursor.execute(puzzle_query, query_data)
+            puzzle_id, fen, moves, rating, themes = cursor.fetchall()[0]
             moves = moves.split()
-        except IndexError:
-            embed = discord.Embed(title="Puzzle command", colour=0xff0000)
-            embed.add_field(name=f"Oops!",
-                            value=f"I can't find a puzzle with puzzle id **{puzzle_id}**.\n"
-                                  f"Command usage:\n"
-                                  f"`{self.client.config.prefix}puzzle` → show a random puzzle, or one near your "
-                                  f"puzzle rating when connected with `{self.client.config.prefix}connect`\n"
-                                  f"`{self.client.config.prefix}puzzle [id]` → show a particular puzzle\n"
-                                  f"`{self.client.config.prefix}puzzle rating1-rating2` → show a random puzzle with a "
-                                  f"rating between rating1 and rating2.")
-            await context.send(embed=embed)
-            return
+        else:
+            get_puzzle = "SELECT FEN, Moves, Rating, Themes FROM puzzles WHERE PuzzleId = %s;"
+            cursor.execute(get_puzzle, (puzzle_id,))
+            try:
+                fen, moves, rating, themes = cursor.fetchall()[0]
+                moves = moves.split()
+            except IndexError:
+                embed = discord.Embed(title="Puzzle command", colour=0xff0000)
+                embed.add_field(name=f"Oops!",
+                                value=f"I can't find a puzzle with puzzle id **{puzzle_id}**.\n"
+                                      f"Command usage:\n"
+                                      f"`{self.client.config.prefix}puzzle` → show a random puzzle, or one near your "
+                                      f"puzzle rating when connected with `{self.client.config.prefix}connect`\n"
+                                      f"`{self.client.config.prefix}puzzle [id]` → show a particular puzzle\n"
+                                      f"`{self.client.config.prefix}puzzle rating1-rating2` → show a random puzzle with a "
+                                      f"rating between rating1 and rating2.")
+                await context.send(embed=embed)
+                return
 
         # Play the initial move that starts the puzzle
         board = chess.Board(fen)
@@ -243,8 +249,14 @@ class Puzzles(commands.Cog):
         if low > high:
             low, high = high, low
 
-        get_puzzle = "SELECT PuzzleId FROM puzzles WHERE Rating BETWEEN %s AND %s ORDER BY RAND() LIMIT 1"
-        cursor.execute(get_puzzle, (low, high))
+        puzzle_query = "WITH filtered AS (SELECT * FROM puzzles WHERE Rating BETWEEN %s AND %s)  " \
+                       "SELECT PuzzleId " \
+                       "FROM filtered " \
+                       "JOIN (SELECT CEIL(RAND() * (SELECT MAX(id) FROM filtered)) AS rand_id) " \
+                       "AS tmp " \
+                       "WHERE filtered.id >= tmp.rand_id " \
+                       "ORDER BY filtered.id ASC  LIMIT 1;"
+        cursor.execute(puzzle_query, (low, high))
         try:
             puzzle_id = cursor.fetchall()[0][0]
         except IndexError:
