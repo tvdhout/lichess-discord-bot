@@ -44,7 +44,7 @@ if __name__ == '__main__':
             for extension in extensions:
                 client.load_extension(extension)
             if RELEASE:
-                client.load_extension('cogs.tog_gg')
+                client.load_extension('cogs.top_gg')
 
             client.run(config.token)
         except KeyboardInterrupt as e:
