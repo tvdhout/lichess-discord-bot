@@ -6,7 +6,8 @@ from LichessBot import LichessBot
 
 class TopGG(commands.Cog):
     """
-    Post the bot's server count to Top.gg every 30 minutes.
+    TopGG API Cog:
+    https://top.gg/bot/707287095911120968
     """
     def __init__(self, client: LichessBot):
         self.client = client
@@ -15,9 +16,12 @@ class TopGG(commands.Cog):
         self.dblpy = dbl.DBLClient(self.client, self.token)
         self.update_stats.start()
 
-    @tasks.loop(minutes=30.0)
+    @tasks.loop(minutes=60.0)
     async def update_stats(self):
-        """This function runs every 30 minutes to automatically update your server count"""
+        """
+        Update server count every hour
+        @return:
+        """
         self.logger.info('Attempting to post server count...')
         try:
             await self.dblpy.post_guild_count()
