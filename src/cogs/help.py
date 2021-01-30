@@ -17,7 +17,7 @@ class Help(commands.Cog):
         """
         embed = discord.Embed(title=f"Commands", colour=0x000000)
         embed.add_field(name=f":question: Support", value=f"For help, issues or suggestions, join the "
-                                                          f"[bot support server](https://discord.gg/4B8PwMKwwq).",
+                                                          f"[bot support server](https://discord.gg/KdpvMD72CV).",
                         inline=False)
         embed.add_field(name=f":face_with_monocle: About",
                         value=f"`{self.client.config.prefix}about` →  Show information about this bot",
@@ -75,7 +75,7 @@ class Help(commands.Cog):
                               f"&permissions=52224&scope=bot). "
                               f"Check out what I can do using `{self.client.config.prefix}commands`. "
                               f"Any issues or suggestions can be posted in the "
-                              f"[bot support discord server](https://discord.gg/4B8PwMKwwq).")
+                              f"[bot support discord server](https://discord.gg/KdpvMD72CV).")
 
         await context.send(embed=embed)
 
