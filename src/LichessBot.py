@@ -27,7 +27,7 @@ class LichessBot(commands.Bot):
     async def on_command_error(self, context, exception):
         if isinstance(exception, (commands.CommandNotFound, commands.NoPrivateMessage)):
             return
-        self.logger.exception(f'Failed to post server count\n{type(e).__name__}: {e}')
+        self.logger.exception(f"{type(e).__name__}: {e}")
         raise exception
 
 
