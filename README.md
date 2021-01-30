@@ -1,6 +1,7 @@
 # Lichess discord bot
 
 [![Bot status widget](https://top.gg/api/widget/status/707287095911120968.svg)](https://top.gg/bot/707287095911120968)
+[![Discord Bots](https://top.gg/api/widget/servers/707287095911120968.svg)](https://top.gg/bot/707287095911120968)
 
 [Click here to invite the bot to your server!](https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permissions=52224&scope=bot)
 
