@@ -1,5 +1,4 @@
 from typing import Optional
-
 import discord
 from discord.ext import commands
 from discord.ext.commands import Context
@@ -182,8 +181,8 @@ class Puzzles(commands.Cog):
                                       f"`{self.client.config.prefix}puzzle` → show a random puzzle, or one near your "
                                       f"puzzle rating when connected with `{self.client.config.prefix}connect`\n"
                                       f"`{self.client.config.prefix}puzzle [id]` → show a particular puzzle\n"
-                                      f"`{self.client.config.prefix}puzzle rating1-rating2` → show a random puzzle with a "
-                                      f"rating between rating1 and rating2.")
+                                      f"`{self.client.config.prefix}puzzle rating1-rating2` → show a random puzzle "
+                                      f"with a rating between rating1 and rating2.")
                 await context.send(embed=embed)
                 return
 
@@ -386,3 +385,4 @@ class Puzzles(commands.Cog):
 
 def setup(client: LichessBot):
     client.add_cog(Puzzles(client))
+    client.logger.info("Sucessfully added cog: Puzzle")

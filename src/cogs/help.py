@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from discord.ext.commands import Context
+
 from LichessBot import LichessBot
 
 
@@ -82,3 +83,4 @@ class Help(commands.Cog):
 
 def setup(client: LichessBot):
     client.add_cog(Help(client))
+    client.logger.info("Sucessfully added cog: Help")

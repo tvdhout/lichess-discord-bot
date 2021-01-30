@@ -1,11 +1,11 @@
 from typing import Optional
-
 import lichess.api
 import discord
 from discord.ext import commands
-from LichessBot import LichessBot
 from discord.ext.commands import Context
 from datetime import timedelta
+
+from LichessBot import LichessBot
 
 
 class Profile(commands.Cog):
@@ -152,7 +152,7 @@ class Profile(commands.Cog):
         try:
             puzzle_rating = user['perfs']['puzzle']['rating']
         except KeyError:  # No puzzle rating found
-            puzzle_rating = 1500  # Set default to 1500
+            puzzle_rating = -1  # No rating
     
         embed.add_field(name="Success!",
                         value=f"I connected {author.mention} to the Lichess account "
@@ -204,3 +204,4 @@ class Profile(commands.Cog):
 
 def setup(client: LichessBot):
     client.add_cog(Profile(client))
+    client.logger.info("Sucessfully added cog: Profile")
