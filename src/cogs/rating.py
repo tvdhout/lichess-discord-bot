@@ -115,7 +115,8 @@ class Ratings(commands.Cog):
 
         await context.send(embed=embed)
 
-    async def gamemode_rating(self, context: Context, gamemode: str, username: Optional[str] = None) -> None:
+    @staticmethod
+    async def gamemode_rating(context: Context, gamemode: str, username: Optional[str] = None) -> None:
         """
         Show the rating of a given user in a particular gamemode
         @param context:
@@ -155,3 +156,4 @@ class Ratings(commands.Cog):
 
 def setup(client: LichessBot):
     client.add_cog(Ratings(client))
+    client.logger.info("Sucessfully added cog: Rating")
