@@ -12,7 +12,6 @@ class TopGG(commands.Cog):
         self.client = client
         self.logger = self.client.logger
         self.token = self.client.config.top_gg_token
-        # self.token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjcwNzI4NzA5NTkxMTEyMDk2OCIsImJvdCI6dHJ1ZSwiaWF0IjoxNjA5MzYwMTA0fQ.xbwxL3fP_x9rx2vb7i3f9ns-b6ZEnPx9DvxtsJK_gic"
         self.dblpy = dbl.DBLClient(self.client, self.token)
         self.update_stats.start()
 
