@@ -16,16 +16,16 @@ class TopGG(commands.Cog):
         self.dblpy = dbl.DBLClient(self.client, self.token)
         self.update_stats.start()
 
-    @tasks.loop(minutes=60.0)
+    @tasks.loop(minutes=240.0)
     async def update_stats(self):
         """
-        Update server count every hour
+        Update server count every 4 hours
         @return:
         """
-        self.logger.info('Attempting to post server count...')
+        self.logger.debug('Attempting to post server count...')
         try:
             await self.dblpy.post_guild_count()
-            self.logger.info(f'Posted server count ({self.dblpy.guild_count()})')
+            self.logger.debug(f'Posted server count ({self.dblpy.guild_count()})')
         except Exception as e:
             self.logger.exception(f'Failed to post server count\n{type(e).__name__}: {e}')
 
