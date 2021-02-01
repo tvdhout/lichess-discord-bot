@@ -25,18 +25,18 @@ class Ratings(commands.Cog):
         @return:
         """
         message = context.message
-        contents = message.content.split()
+        args = message.content.split()[1:]
 
-        if len(contents) == 1:  # -rating
+        if len(args) == 0:  # -rating
             await self.all_ratings(context)
             return
 
-        username = contents[1]
+        username = args[0]
 
-        if len(contents) == 2:  # !rating [name/url]
+        if len(args) == 1:  # !rating [name/url]
             await self.all_ratings(context, username=username)
-        elif len(contents) > 2:  # !rating [name/url] [gamemode]
-            gamemode = contents[2]
+        elif len(args) > 1:  # !rating [name/url] [gamemode]
+            gamemode = args[1]
             await self.gamemode_rating(context, gamemode=gamemode, username=username)
 
     async def all_ratings(self, context: Context, username: Optional[str] = None) -> None:
@@ -47,7 +47,7 @@ class Ratings(commands.Cog):
         user has a Lichess account connected to it.
         @return:
         """
-        if username is None:
+        if username is None:  # Check if user is in database
             discord_uid = str(context.message.author.id)
             try:
                 cursor = self.client.connection.cursor(buffered=True)
@@ -55,7 +55,7 @@ class Ratings(commands.Cog):
                 username = cursor.fetchall()[0][0]
                 self.client.connection.commit()
                 cursor.close()
-            except IndexError:
+            except IndexError:  # User not in database
                 embed = discord.Embed(title="Rating command", colour=0xff0000)
                 embed.add_field(name="No username",
                                 value=f"To use this command without giving a username, link your Discord profile to "
@@ -65,9 +65,9 @@ class Ratings(commands.Cog):
                 await context.send(embed=embed)
                 return
 
-        try:
+        try:  # Fetch user object from Lichess API
             user = lichess.api.user(username)
-        except lichess.api.ApiHttpError:
+        except lichess.api.ApiHttpError:  # Lichess user does not exist.
             embed = discord.Embed(title=f"Rating command", colour=0xff0000)
             embed.add_field(name="Username not found", value=f"{username} is not an active Lichess account.")
             await context.send(embed=embed)
@@ -96,21 +96,23 @@ class Ratings(commands.Cog):
                             inline=True)
 
         for mode in ratings:
-            try:
-                if mode in normal_modes:
-                    continue
+            if mode in normal_modes:  # Already added these
+                continue
+            if mode.lower() == "storm":
+                embed.add_field(name="Puzzle storm score",
+                                value=f"{ratings[mode]['score']} ({ratings[mode]['runs']} runs)",
+                                inline=True)
+            else:
                 embed.add_field(name=mode.capitalize(),
                                 value=f"{ratings[mode]['rating']}{'?' * ('prov' in ratings[mode])} "
                                       f"({ratings[mode]['games']} "
                                       f"{'puzzles' if mode == 'puzzle' else 'games'})",
                                 inline=True)
-            except KeyError:
-                continue
 
         if sum(average_weights) == 0:
             average_weights = [1] * len(average_weights)
         average_rating = int(np.average(ratings_to_average, weights=average_weights))
-        embed.add_field(name='Average rating weighted by number of games (Bullet, Blitz, Rapid, Classical)',
+        embed.add_field(name='Average rating weighted by number of games in Bullet, Blitz, Rapid, and Classical',
                         value=f'**{average_rating}{"?" if average_provisional else ""}**', inline=False)
 
         await context.send(embed=embed)
@@ -141,10 +143,13 @@ class Ratings(commands.Cog):
 
         if gamemode.lower() in user['perfs']:
             element = user['perfs'][gamemode.lower()]
-            embed.add_field(name=gamemode.capitalize(),
-                            value=f"{element['rating']}{'?' * ('prov' in element)} "
-                                  f"({element['games']} "
-                                  f"{'puzzles' if gamemode.lower() == 'puzzle' else 'games'})")
+            if gamemode.lower() == "storm":
+                embed.add_field(name="Puzzle storm score", value=f"{element['score']} ({element['runs']} runs)")
+            else:
+                embed.add_field(name=gamemode.capitalize(),
+                                value=f"{element['rating']}{'?' * ('prov' in element)} "
+                                      f"({element['games']} "
+                                      f"{'puzzles' if gamemode.lower() == 'puzzle' else 'games'})")
         else:
             embed.add_field(name='Error',
                             value=f"I can't find {user['username']}'s {gamemode} rating. The user may not "
