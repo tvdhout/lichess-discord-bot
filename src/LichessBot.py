@@ -2,11 +2,9 @@
 Invite the bot to your server with the following URL
 https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permissions=52224&scope=bot
 """
-import sys
 import discord
 from discord.ext import commands
 import mysql.connector
-import logging
 
 from config import Config
 
@@ -44,8 +42,8 @@ if __name__ == '__main__':
             client: LichessBot = LichessBot(conf=config, connection=db_connection, command_prefix=config.prefix)
             client.remove_command('help')  # remove default help command
 
-            config.logger.info("Loading extension cogs")
             # Load command cogs
+            config.logger.info("Loading extension cogs")
             extensions = ['cogs.profile', 'cogs.puzzle', 'cogs.rating', 'cogs.help']
             for extension in extensions:
                 client.load_extension(extension)
