@@ -16,7 +16,7 @@ class TopGG(commands.Cog):
         self.dblpy = dbl.DBLClient(self.client, self.token)
         self.update_stats.start()
 
-    @tasks.loop(minutes=240.0)
+    @tasks.loop(hours=4)
     async def update_stats(self):
         """
         Update server count every 4 hours
@@ -31,6 +31,5 @@ class TopGG(commands.Cog):
 
 
 def setup(client: LichessBot):
-    top_gg_cog = TopGG(client)
-    client.add_cog(top_gg_cog)
+    client.add_cog(TopGG(client))
     client.logger.info("Sucessfully added cog: TopGG")

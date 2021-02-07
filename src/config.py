@@ -27,7 +27,7 @@ class Config:
             handler = logging.FileHandler(f"{self.base_dir}/LichessBot.log")
         else:
             handler = logging.FileHandler(f"{self.base_dir}/dev/LichessBotDev.log")
-        formatter = logging.Formatter("%(asctime)s - %(levelname)s: %(message)s")
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s: %(message)s", "%Y-%m-%d %H:%M")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         return logger
