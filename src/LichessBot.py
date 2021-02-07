@@ -49,7 +49,6 @@ if __name__ == '__main__':
                 client.load_extension(extension)
             if RELEASE:
                 client.load_extension('cogs.top_gg')
-                client.load_extension('cogs.update_ratings')
             config.logger.info("Finished loading extension cogs")
 
             client.run(config.token)

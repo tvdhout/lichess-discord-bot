@@ -1,0 +1,3 @@
+#! /usr/bin/bash
+source /home/thijs/Lichess-discord-bot/venv/bin/activate
+python3 /home/thijs/Lichess-discord-bot/src/update_puzzle_ratings.py
