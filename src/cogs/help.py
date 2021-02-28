@@ -68,7 +68,7 @@ class Help(commands.Cog):
                          icon_url="https://cdn.discordapp.com/avatars/289163010835087360"
                                   "/f7874fb1b63d84359307b8736f559355.webp?size=128")
         embed.add_field(name="About me",
-                        value=f"I am a bot that can show Lichess puzzles for you to solve right there in the channel. "
+                        value=f"I am a bot that can show Lichess puzzles for you to solve right here in the channel. "
                               f"I can also obtain various lichess-related pieces of information for you. You can see "
                               f"how I work [on the GitHub page](https://github.com/tvdhout/Lichess-discord-bot). "
                               f"You can invite me to your own server using "
