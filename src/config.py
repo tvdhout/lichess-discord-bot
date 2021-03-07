@@ -23,11 +23,15 @@ class Config:
     def _set_logger(self) -> logging.getLoggerClass():
         logger = logging.getLogger("LichessBot")
         logger.setLevel(logging.INFO)
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s: %(message)s", "%Y-%m-%d %H:%M")
         if self.release:
             handler = logging.FileHandler(f"{self.base_dir}/LichessBot.log")
         else:
             handler = logging.FileHandler(f"{self.base_dir}/dev/LichessBotDev.log")
-        formatter = logging.Formatter("%(asctime)s - %(levelname)s: %(message)s", "%Y-%m-%d %H:%M")
+            console = logging.StreamHandler()  # Also print development log to console
+            console.setLevel(logging.DEBUG)
+            console.setFormatter(formatter)
+            logger.addHandler(console)
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         return logger
