@@ -72,8 +72,8 @@ class Help(commands.Cog):
                               f"I can also obtain various lichess-related pieces of information for you. You can see "
                               f"how I work [on the GitHub page](https://github.com/tvdhout/Lichess-discord-bot). "
                               f"You can invite me to your own server using "
-                              f"[this link](https://discord.com/oauth2/authorize?client_id=707287095911120968"
-                              f"&permissions=52224&scope=bot). "
+                              f"[this link](https://discord.com/api/oauth2/authorize?client_id=707287095911120968"
+                              f"&permissions=116800&scope=bot). "
                               f"Check out what I can do using `{self.client.config.prefix}commands`. "
                               f"Any issues or suggestions can be posted in the "
                               f"[bot support discord server](https://discord.gg/KdpvMD72CV).")

@@ -3,13 +3,13 @@
 [![Bot status widget](https://top.gg/api/widget/status/707287095911120968.svg)](https://top.gg/bot/707287095911120968)
 [![Discord Bots](https://top.gg/api/widget/servers/707287095911120968.svg)](https://top.gg/bot/707287095911120968)
 
-[Click here to invite the bot to your server!](https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permissions=52224&scope=bot)
+[Click here to invite the bot to your server!](https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permissions=116800&scope=bot)
 
 ## DESCRIPTION
 This bot integrates with the lichess.org chess website. The bot can show chess puzzles which can be solved right there in the channel! It can also retrieve ELO rankings for users, show user profiles, and connect your discord account to your lichess account for enhanced functionality!
 
 ## PREFIX
-\-
+`-`
 
 ## COMMANDS 
 * `-help` or `-commands` → show list of commands
