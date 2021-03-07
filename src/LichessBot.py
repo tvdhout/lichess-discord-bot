@@ -4,6 +4,7 @@ https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permission
 """
 import discord
 from discord.ext import commands
+from discord.ext.commands import Context
 import mysql.connector
 
 from config import Config
@@ -22,10 +23,10 @@ class LichessBot(commands.Bot):
         await self.change_presence(activity=discord.Activity(type=discord.ActivityType.listening,
                                                              name=f"{self.config.prefix}help"))
 
-    async def on_command_error(self, context, exception):
+    async def on_command_error(self, context: Context, exception: Exception):
         if isinstance(exception, (commands.CommandNotFound, commands.NoPrivateMessage)):
             return
-        self.logger.exception(f"{type(e).__name__}: {e}")
+        self.logger.exception(f"{type(exception).__name__}: {exception}")
         raise exception
 
 
@@ -44,7 +45,7 @@ if __name__ == '__main__':
 
             # Load command cogs
             config.logger.info("Loading extension cogs")
-            extensions = ['cogs.profile', 'cogs.puzzle', 'cogs.rating', 'cogs.help']
+            extensions = ['cogs.profile', 'cogs.puzzle', 'cogs.answer', 'cogs.rating', 'cogs.help']
             for extension in extensions:
                 client.load_extension(extension)
             if RELEASE:
@@ -54,7 +55,7 @@ if __name__ == '__main__':
             client.run(config.token)
         except KeyboardInterrupt as e:
             config.logger.warning("Lichess bot stopped during setup. (KeyboardInterrupt)")
-        finally:  # Gracefully close the connection
+        finally:  # Gracefully close the database connection
             db_connection.commit()
             db_connection.close()
             config.logger.info("Closed database connection\n\n")
