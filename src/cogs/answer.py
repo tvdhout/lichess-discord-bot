@@ -315,7 +315,7 @@ class Answers(commands.Cog):
             embed.set_footer(text=message)
         else:
             embed.set_footer(text="I need the 'add reactions' permission for enhanced functionality!",
-                             icon_url="https://raw.githubusercontent.com/tvdhout/Lichess-discord-bot/development"
+                             icon_url="https://raw.githubusercontent.com/tvdhout/Lichess-discord-bot/master"
                                       "/media/exclam.png")
         msg = await context.send(embed=embed)
         if react_permission:
