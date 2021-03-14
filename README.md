@@ -5,14 +5,15 @@
 
 [Click here to invite the bot to your server!](https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permissions=116800&scope=bot)
 
-## DESCRIPTION
+## Description
 This bot integrates with the lichess.org chess website. The bot can show chess puzzles which can be solved right there in the channel! It can also retrieve ELO rankings for users, show user profiles, and connect your discord account to your lichess account for enhanced functionality!
 
-## PREFIX
-`-`
+## Default prefix
+`-` (customizable)
 
 ## COMMANDS 
 * `-help` or `-commands` → show list of commands
+* `-lichessprefix [new prefix]` → Set a custom command prefix for your server
 * `-about` → show information about the bot
 * `-connect [lichess username]` → connect your Discord profile with your Lichess account.
 * `-disconnect` → disconnect your Discord profile from a connected Lichess account
@@ -26,16 +27,17 @@ This bot integrates with the lichess.org chess website. The bot can show chess p
 * `-profile [username]` → show a lichess user profile. When connected with `-connect` you can use this command without giving a username.
 
 ## Help / Contact / Issues / Requests / Collaboration
-Questions, issues and requests can be posted as an issue in this repository, or posted in the [discord support server](https://discord.gg/4B8PwMKwwq)
+Questions, issues and requests can be posted as an issue in this repository, or posted in the [discord support server](https://discord.gg/KdpvMD72CV)
 
 ## Screenshots
-![Puzzle command screenshot](/media/puzzle_example.png)
+![Puzzle command screenshot](/media/puzzle-example.png)
 
-![Answer command screenshot](/media/bestmove_example.png)
+![Answer command screenshot](/media/answer-example.gif)
 
-![Rating command screenshot](/media/rating_example.png)
+![Bestmove command screenshot](/media/bestmove-example.png)
 
-![Profile command screenshot](/media/profile_example.png)
+![Rating command screenshot](/media/rating-example.png)
 
-![Help command screenshot](/media/help_example.png)
+![Connect command screenshot](/media/connect-example.png)
 
+![Profile command screenshot](/media/profile-example.png)
