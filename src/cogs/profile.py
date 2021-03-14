@@ -40,7 +40,7 @@ class Profile(commands.Cog):
         except IndexError:
             embed = discord.Embed(title=f"Connect command", colour=0xff0000)
             embed.add_field(name="Connect your Lichess account to get more relevant puzzles:",
-                            value=f"`{self.client.config.prefix}connect [username]`")
+                            value=f"`{self.client.prfx(context)}connect [username]`")
             await context.send(embed=embed)
 
     @commands.command(name="disconnect")
@@ -70,9 +70,9 @@ class Profile(commands.Cog):
                 embed = discord.Embed(title="Profile command", colour=0xff0000)
                 embed.add_field(name="No username",
                                 value=f"To use this command without giving a username, link your Discord profile to "
-                                      f"your Lichess account using `{self.client.config.prefix}connect [username]`.\n"
+                                      f"your Lichess account using `{self.client.prfx(context)}connect [username]`.\n"
                                       f"Alternatively, provide a lichess username with "
-                                      f"`{self.client.config.prefix}profile [username]`.")
+                                      f"`{self.client.prfx(context)}profile [username]`.")
                 await context.send(embed=embed)
                 return
     
@@ -159,14 +159,14 @@ class Profile(commands.Cog):
                               f"[{username}](https://lichess.org/@/{username}).",
                         inline=False)
         embed.add_field(name="Effect on commands:",
-                        value=f"You can now use the `{self.client.config.prefix}rating` and "
-                              f"`{self.client.config.prefix}profile` commands without giving your username in the "
-                              f"command.\n`{self.client.config.prefix}puzzle` will now select puzzles near your puzzle "
+                        value=f"You can now use the `{self.client.prfx(context)}rating` and "
+                              f"`{self.client.prfx(context)}profile` commands without giving your username in the "
+                              f"command.\n`{self.client.prfx(context)}puzzle` will now select puzzles near your puzzle "
                               f"rating! If you don't have a puzzle rating, you will still get random puzzles.",
                         inline=False)
         embed.add_field(name="Disconnect",
                         value=f"To disconnect your Discord account from your Lichess account use the \n"
-                              f"`{self.client.config.prefix}disconnect` command.",
+                              f"`{self.client.prfx(context)}disconnect` command.",
                         inline=False)
     
         await context.send(embed=embed)
