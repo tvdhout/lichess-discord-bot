@@ -23,13 +23,14 @@ class Help(commands.Cog):
         @return:
         """
         prefix = self.client.prfx(context)
+        dm = context.guild is None
         embed = discord.Embed(title=f"Help", colour=0x000000)
         embed.add_field(name=f":question: Support", value=f"For help, issues or suggestions, join the "
                                                           f"[bot support server](https://discord.gg/KdpvMD72CV).",
                         inline=False)
-        embed.add_field(name=f":pencil: Command prefix (currently `{prefix}`)",
+        embed.add_field(name=f":pencil: Command prefix ({f'none in DMs' if dm else f'currently `{prefix}`'})",
                         value=f"`{prefix}lichessprefix [new prefix]` → Change the command prefix "
-                              f"(administrator only)", inline=False)
+                              f"(server administrator only)", inline=False)
         embed.add_field(name=f":face_with_monocle: About",
                         value=f"`{prefix}about` →  Show information about this bot",
                         inline=False)
