@@ -59,9 +59,9 @@ class Ratings(commands.Cog):
                 embed = discord.Embed(title="Rating command", colour=0xff0000)
                 embed.add_field(name="No username",
                                 value=f"To use this command without giving a username, link your Discord profile to "
-                                      f"your Lichess account using `{self.client.config.prefix}connect ["
+                                      f"your Lichess account using `{self.client.prfx(context)}connect ["
                                       f"username]`.\nAlternatively, provide a lichess username with `"
-                                      f"{self.client.config.prefix}rating [username]`.")
+                                      f"{self.client.prfx(context)}rating [username]`.")
                 await context.send(embed=embed)
                 return
 

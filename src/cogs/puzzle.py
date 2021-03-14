@@ -32,7 +32,7 @@ class Puzzles(commands.Cog):
         if len(contents) == 1:
             await self.show_puzzle(context)
             return
-        prefix = '\\' + self.client.config.prefix
+        prefix = re.escape(self.client.prfx(context))  # Escape any regex metacharacters in prefix
         match = re.match(rf'^{prefix}puzzle +\[?(\d+)]* *[ _\-] *\[?(\d+)]?$', message.content)
         if match is not None:  # -puzzle rating1 - rating2
             low = int(match.group(1))
@@ -92,10 +92,10 @@ class Puzzles(commands.Cog):
                 embed.add_field(name=f"Oops!",
                                 value=f"I can't find a puzzle with puzzle id **{puzzle_id}**.\n"
                                       f"Command usage:\n"
-                                      f"`{self.client.config.prefix}puzzle` → show a random puzzle, or one near your "
-                                      f"puzzle rating when connected with `{self.client.config.prefix}connect`\n"
-                                      f"`{self.client.config.prefix}puzzle [id]` → show a particular puzzle\n"
-                                      f"`{self.client.config.prefix}puzzle rating1-rating2` → show a random puzzle "
+                                      f"`{self.client.prfx(context)}puzzle` → show a random puzzle, or one near your "
+                                      f"puzzle rating when connected with `{self.client.prfx(context)}connect`\n"
+                                      f"`{self.client.prfx(context)}puzzle [id]` → show a particular puzzle\n"
+                                      f"`{self.client.prfx(context)}puzzle rating1-rating2` → show a random puzzle "
                                       f"with a rating between rating1 and rating2.")
                 await context.send(embed=embed)
                 return
@@ -124,13 +124,13 @@ class Puzzles(commands.Cog):
         puzzle = discord.File(f'{self.client.config.base_dir}/media/puzzle.png',
                               filename="puzzle.png")  # load puzzle as Discord file
         embed.set_image(url="attachment://puzzle.png")
-        embed.add_field(name=f"Answer with `{self.client.config.prefix}answer` / `{self.client.config.prefix}a`",
+        embed.add_field(name=f"Answer with `{self.client.prfx(context)}answer` / `{self.client.prfx(context)}a`",
                         value=f"Answer using SAN ({initial_move_san}) or UCI ({initial_move_uci}) notation\n"
                               f"Puzzle difficulty rating: ||**{rating}**||")
 
         if not connected:
             embed.add_field(name=f"Get relevant puzzles:",
-                            value=f"Connect your Lichess account with `{self.client.config.prefix}connect` to get "
+                            value=f"Connect your Lichess account with `{self.client.prfx(context)}connect` to get "
                                   f"puzzles around your puzzle rating!")
 
         msg = await context.send(file=puzzle, embed=embed)  # send puzzle

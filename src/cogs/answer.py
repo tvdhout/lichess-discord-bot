@@ -49,8 +49,8 @@ class Answers(commands.Cog):
             embed = discord.Embed(title=f"Answer command", colour=0x00ffff)
             embed.add_field(name="Answer a puzzle:", value=f"You can answer a puzzle by giving your answer in the SAN "
                                                            f"notation (e.g. Qxc5) or UCI notation (e.g. e2e4)\n "
-                                                           f"`{self.client.config.prefix}answer [answer]` or "
-                                                           f"`{self.client.config.prefix}a [answer]`")
+                                                           f"`{self.client.prfx(context)}answer [answer]` or "
+                                                           f"`{self.client.prfx(context)}a [answer]`")
             await context.send(embed=embed)
         else:
             await self.answer_puzzle(context, answer=" ".join(contents[1:]))
@@ -75,8 +75,8 @@ class Answers(commands.Cog):
         except IndexError:
             embed = discord.Embed(title=f"No active puzzle!", colour=0xffff00)
             embed.add_field(name="Start a new puzzle",
-                            value=f"To start a puzzle use the `{self.client.config.prefix}puzzle` command.\n"
-                                  f"Use `{self.client.config.prefix}commands` for more options.")
+                            value=f"To start a puzzle use the `{self.client.prfx(context)}puzzle` command.\n"
+                                  f"Use `{self.client.prfx(context)}commands` for more options.")
             await context.send(embed=embed)
             return
 
@@ -137,8 +137,8 @@ class Answers(commands.Cog):
         except IndexError:
             embed = discord.Embed(title=f"No active puzzle!", colour=0xffff00)
             embed.add_field(name="Start a new puzzle",
-                            value=f"To start a puzzle use the `{self.client.config.prefix}puzzle` command.\n"
-                                  f"Use `{self.client.config.prefix}commands` for more options.")
+                            value=f"To start a puzzle use the `{self.client.prfx(context)}puzzle` command.\n"
+                                  f"Use `{self.client.prfx(context)}commands` for more options.")
             await context.send(embed=embed)
             return
 
@@ -226,8 +226,8 @@ class Answers(commands.Cog):
         else:  # Incorrect answer
             embed.colour = 0xff0000
             embed.add_field(name="Wrong!",
-                            value=f"{answer} is not the best move. Try again using `{self.client.config.prefix}"
-                                  f"answer` or get the answer with `{self.client.config.prefix}bestmove`")
+                            value=f"{answer} is not the best move. Try again using `{self.client.prfx(context)}"
+                                  f"answer` or get the answer with `{self.client.prfx(context)}bestmove`")
 
             await self.send_with_reaction(context, embed, message="Click the question mark to get a hint!", emoji="❓")
 
