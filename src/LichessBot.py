@@ -2,7 +2,7 @@
 Invite the bot to your server with the following URL
 https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permissions=116800&scope=bot
 """
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import discord
 from discord import Message
@@ -56,20 +56,22 @@ class LichessBot(commands.Bot):
         self.connection.commit()
         return dict(result)
 
-    def prefix(self, message: Message) -> str:
+    def prefix(self, message: Message) -> List[str]:
         """
         Get the command prefix for the guild in which the message is sent.
         @param message: Message: message for which to request the prefix.
         @return: str: prefix
         """
-        return self.prefixes.get(str(message.guild.id), self.config.default_prefix)
+        if message.guild is None:
+            return [self.config.default_prefix, '']
+        return [self.prefixes.get(str(message.guild.id), self.config.default_prefix)]
 
     def prfx(self, context: Context) -> str:
-        return self.prefix(context.message)
+        return self.prefix(context.message)[-1]
 
 
 def get_prefix(bot: LichessBot, message: Message) -> List[str]:
-    return [bot.prefix(message), bot.config.universal_prefix]
+    return [bot.config.universal_prefix, *bot.prefix(message)]
 
 
 if __name__ == '__main__':
