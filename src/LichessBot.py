@@ -2,7 +2,7 @@
 Invite the bot to your server with the following URL
 https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permissions=116800&scope=bot
 """
-from typing import Dict, List, Union
+from typing import Dict, List
 
 import discord
 from discord import Message
