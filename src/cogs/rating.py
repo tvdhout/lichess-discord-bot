@@ -98,16 +98,19 @@ class Ratings(commands.Cog):
         for mode in ratings:
             if mode in normal_modes:  # Already added these
                 continue
-            if mode.lower() == "storm":
-                embed.add_field(name="Puzzle storm score",
-                                value=f"{ratings[mode]['score']} ({ratings[mode]['runs']} runs)",
-                                inline=True)
-            else:
+            try:
                 embed.add_field(name=mode.capitalize(),
                                 value=f"{ratings[mode]['rating']}{'?' * ('prov' in ratings[mode])} "
                                       f"({ratings[mode]['games']} "
                                       f"{'puzzles' if mode == 'puzzle' else 'games'})",
                                 inline=True)
+            except KeyError:
+                try:
+                    embed.add_field(name=f"Puzzle {mode} score",
+                                    value=f"{ratings[mode]['score']} ({ratings[mode]['runs']} runs)",
+                                    inline=True)
+                except KeyError:
+                    pass  # New unknown gamemode without ['rating'] or ['score']
 
         if sum(average_weights) == 0:
             average_weights = [1] * len(average_weights)
