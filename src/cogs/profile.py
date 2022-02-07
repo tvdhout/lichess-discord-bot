@@ -60,6 +60,7 @@ class Profile(commands.Cog):
         Lichess account for this discord user.
         @return:
         """
+        self.client.logger.info("Called show_profile")
         cursor = self.client.connection.cursor(buffered=True)
         if username is None:
             discord_uid = str(context.message.author.id)
@@ -106,7 +107,7 @@ class Profile(commands.Cog):
         profile_contents += f"*Play time:* {days} {hours} hours and {minutes} minutes.\n"
     
         profile_contents += str(user['count']['all']) + ' games played.\n'
-        profile_contents += str(user['nbFollowers']) + ' followers.\n'
+        # profile_contents += str(user['nbFollowers']) + ' followers.\n'  # Deprecated
     
         embed.add_field(name="Profile", value=profile_contents)
     
