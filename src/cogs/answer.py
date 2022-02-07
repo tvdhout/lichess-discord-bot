@@ -166,7 +166,7 @@ class Answers(commands.Cog):
                     board.push_san(a)
                 else:
                     board.push_uci(a)
-                if board.is_game_over():
+                if board.is_game_over() and not board.is_stalemate():
                     return True
                 board.pop()
                 return False
