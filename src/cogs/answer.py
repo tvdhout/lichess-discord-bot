@@ -127,7 +127,7 @@ class Answers(commands.Cog):
         cursor = self.client.connection.cursor(buffered=True)
         # Fetch the active puzzle from the channel_puzzles table
         get_puzzle = "SELECT puzzles.PuzzleId, Rating, channel_puzzles.Moves, channel_puzzles.FEN, MessageId " \
-                     "FROM channel_puzzles LEFT JOIN puzzles ON channel_puzzles.PuzzleId = puzzles.PuzzleId " \
+                     "FROM channel_puzzles LEFT JOIN puzzles ON BINARY channel_puzzles.PuzzleId = puzzles.PuzzleId " \
                      "WHERE ChannelId = %s;"
         cursor.execute(get_puzzle, (str(context.channel.id),))
 
