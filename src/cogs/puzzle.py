@@ -65,7 +65,7 @@ class Puzzles(commands.Cog):
                                "JOIN (SELECT CEIL(RAND() * (SELECT MAX(id) FROM filtered)) AS rand_id) " \
                                "AS tmp " \
                                "WHERE filtered.id >= tmp.rand_id " \
-                               "ORDER BY filtered.id ASC  LIMIT 1;"
+                               "ORDER BY filtered.id ASC LIMIT 1;"
                 query_data = (rating-50, rating+100)
             except (IndexError, ValueError) as e:
                 if isinstance(e, IndexError):
@@ -82,7 +82,7 @@ class Puzzles(commands.Cog):
             puzzle_id, fen, moves, rating, themes = cursor.fetchall()[0]
             moves = moves.split()
         else:
-            get_puzzle = "SELECT FEN, Moves, Rating, Themes FROM puzzles WHERE PuzzleId = %s;"
+            get_puzzle = "SELECT FEN, Moves, Rating, Themes FROM puzzles WHERE BINARY PuzzleId = %s;"
             cursor.execute(get_puzzle, (puzzle_id,))
             try:
                 fen, moves, rating, themes = cursor.fetchall()[0]
