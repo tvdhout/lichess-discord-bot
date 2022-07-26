@@ -3,7 +3,8 @@ import sys
 import numpy as np
 import pandas as pd
 from dotenv import find_dotenv, load_dotenv
-from sqlalchemy import create_engine, Column, ARRAY, Integer, SmallInteger, String, text, inspect, ForeignKey
+from sqlalchemy import create_engine, Column, ARRAY, Integer, SmallInteger, BigInteger, String, text, inspect, \
+    ForeignKey
 from sqlalchemy.orm import Session, relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects import postgresql
@@ -50,7 +51,7 @@ class Prefix(Base):
     """
     __tablename__ = 'prefixes'
 
-    guild_id: Column = Column(String, primary_key=True, nullable=False)  # Guild ID of the updated prefix
+    guild_id: Column = Column(BigInteger, primary_key=True, nullable=False)  # Guild ID of the updated prefix
     prefix: Column = Column(String(10), nullable=False)  # Command prefix character(s) (default '-')
 
 

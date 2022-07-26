@@ -12,7 +12,7 @@ from discord.ext import commands
 from discord.ext.commands import Context
 from sqlalchemy.orm import sessionmaker
 
-from database import engine
+from database import engine, Prefix
 
 
 class LichessBot(commands.Bot):
@@ -38,14 +38,14 @@ class LichessBot(commands.Bot):
         self.logger.exception(f"{type(exception).__name__}: {exception}")
         raise exception
 
-    async def on_guild_remove(self, guild):
+    async def on_guild_remove(self, guild: discord.Guild):
         """
         Remove custom prefix, if set.
         @param guild: The guild from which the bot is removed.
         @return:
         """
-        # TODO remove custom prefix from db
-        ...
+        with self.Session() as session:
+            session.query(Prefix).filter(Prefix.guild_id == guild.id).delete()
 
     def _set_logger(self) -> logging.getLoggerClass():
         logger = logging.getLogger('discord')
@@ -73,8 +73,8 @@ class LichessBot(commands.Bot):
         Retrieve all custom prefixes from the database.
         @return: dict: {guild_id: prefix}
         """
-        result = ...  # TODO retrieve from db
-        return dict(result)
+        with self.Session() as session:
+            return dict(session.query(Prefix.guild_id, Prefix.prefix).all())
 
     def prefix(self, message: Message) -> list[str]:
         """
@@ -82,11 +82,11 @@ class LichessBot(commands.Bot):
         @param message: Message: message for which to request the prefix.
         @return: str: prefix
         """
-        if message.guild is None:  # Direct message
+        if message.guild is None:  # Private message
             return [self.default_prefix, '']
         return [self.universal_prefix, self.prefixes.get(str(message.guild.id), self.default_prefix)]
 
-    def prfx(self, context: Context) -> str:
+    def prfx(self, context: Context) -> str:  # TODO Want to delete this
         return self.prefix(context.message)[-1]
 
 
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     release = True
 
     client: LichessBot = LichessBot(release=release)
-    client.remove_command('help')  # remove default help command
+    client.remove_command('help')  # Remove default help command
 
     # Load command cogs
     client.logger.info("Loading extension cogs")
