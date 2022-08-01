@@ -1,0 +1,29 @@
+body {
+    background-color: #1a1a1a;
+    color: #dbd7ca;
+    font-family: 'Courier New', monospace;
+    font-size: xx-large;
+}
+
+div {
+    height: 80%;
+    margin-top: 20%;
+    text-align: center;
+    line-height: 100%
+}
+
+span.green {
+    color: #7ccc74
+}
+
+span.red {
+    color: #cc7474
+}
+
+span.small {
+    font-size: medium;
+}
+
+span.discord {
+    color: #7774cc;
+}
