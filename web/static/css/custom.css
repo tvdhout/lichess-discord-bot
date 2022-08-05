@@ -6,10 +6,17 @@ body {
 }
 
 div {
-    height: 80%;
-    margin-top: 20%;
+    height: 90%;
+    margin-top: 10%;
     text-align: center;
     line-height: 100%
+}
+
+img {
+    margin-left: auto;
+    margin-right: auto;
+    width: 200px;
+    height: 200px;
 }
 
 span.green {

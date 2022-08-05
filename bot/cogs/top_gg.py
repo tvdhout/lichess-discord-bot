@@ -1,5 +1,7 @@
-from discord.ext import commands, tasks
+import os
+
 import dbl
+from discord.ext import commands, tasks
 
 from LichessBot import LichessBot
 
@@ -12,7 +14,7 @@ class TopGG(commands.Cog):
     def __init__(self, client: LichessBot):
         self.client = client
         self.logger = self.client.logger
-        self.token = self.client.config.top_gg_token
+        self.token = os.getenv('TOPGG_TOKEN')
         self.dblpy = dbl.DBLClient(self.client, self.token)
         self.update_stats.start()
 
