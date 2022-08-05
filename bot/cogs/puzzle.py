@@ -77,7 +77,7 @@ class PuzzleCog(commands.GroupCog, name='puzzle'):
                                             '`Create Public Threads`, `Send Messages in Threads`, '
                                             'and `Manage Threads` I can create a new thread for each puzzle!')
 
-        await channel.send(file=file, embed=embed, view=HintView())  # FIXME
+        await channel.send(file=file, embed=embed, view=HintView())
 
         # Add puzzle to channel_puzzles table
         with self.client.Session() as session:

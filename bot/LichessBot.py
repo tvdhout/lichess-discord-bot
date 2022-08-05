@@ -1,6 +1,6 @@
 """
 Invite the bot to your server with the following URL
-TODO new link
+https://discord.com/api/oauth2/authorize?client_id=707287095911120968&permissions=309237696512&scope=bot%20applications.commands
 """
 import os
 import sys
