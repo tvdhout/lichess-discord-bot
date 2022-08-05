@@ -45,7 +45,7 @@ def callback():
         challenge_query = session.query(APIChallenge).filter(APIChallenge.discord_id == state)
         challenge: APIChallenge | None = challenge_query.first()
         if challenge is None:
-            return flask.render_template('error.html')
+            return flask.render_template('expired.html')
 
         # Get OAuth token
         resp = requests.post(url='https://lichess.org/api/token',

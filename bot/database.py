@@ -2,24 +2,20 @@ import os
 import sys
 import numpy as np
 import pandas as pd
-from dotenv import find_dotenv, load_dotenv
-from sqlalchemy import create_engine, Column, ARRAY, Integer, SmallInteger, BigInteger, String, text, inspect, \
-    ForeignKey
+from dotenv import load_dotenv
+import sqlalchemy as sa
+from sqlalchemy import Column, ARRAY, Integer, SmallInteger, BigInteger, String, Text
 from sqlalchemy.orm import Session, relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects import postgresql
 from psycopg2.extensions import AsIs
 
-load_dotenv(find_dotenv('.env'))
+load_dotenv()
 Base = declarative_base()
-engine = create_engine(f'postgresql://{os.getenv("DATABASE_USER")}'
-                       f':{os.getenv("DATABASE_PASSWORD")}'
-                       f'@{os.getenv("DATABASE_HOST")}'
-                       f'/{os.getenv("DATABASE_NAME")}')
-# TODO maybe this is obsolete:
-PUZZLE_DTYPES = {'puzzle_id': String, 'fen': String(length=90), 'moves': ARRAY(String), 'rating': SmallInteger,
-                 'rating_deviation': SmallInteger, 'popularity': SmallInteger, 'nr_plays': Integer,
-                 'themes': ARRAY(String), 'url': String, 'opening_family': String, 'opening_variation': String}
+engine = sa.create_engine(f'postgresql://{os.getenv("DATABASE_USER")}'
+                          f':{os.getenv("DATABASE_PASSWORD")}'
+                          f'@{os.getenv("DATABASE_HOST")}'
+                          f'/{os.getenv("DATABASE_NAME")}')
 
 
 class Puzzle(Base):
@@ -29,30 +25,22 @@ class Puzzle(Base):
     """
     __tablename__ = 'puzzles'
 
-    # id: Column = Column(BigInteger, nullable=False, autoincrement=True, index=True)
-    puzzle_id: Column = Column(String, primary_key=True, nullable=False, unique=True, index=True)
-    fen: Column = Column(String(length=90), nullable=False)
-    moves: Column = Column(ARRAY(String), nullable=False)
-    rating: Column = Column(SmallInteger, nullable=False, index=True)
-    rating_deviation: Column = Column(SmallInteger, nullable=False)
-    popularity: Column = Column(SmallInteger, nullable=False)
-    nr_plays: Column = Column(Integer, nullable=False)
-    themes: Column = Column(ARRAY(String))
-    url: Column = Column(String, nullable=False)
-    opening_family: Column = Column(String)
-    opening_variation: Column = Column(String)
+    puzzle_id: Column | str = Column(String, primary_key=True, nullable=False, unique=True)
+    fen: Column | str = Column(String(length=90), nullable=False)
+    moves: Column | list[str] = Column(ARRAY(String(4)), nullable=False)
+    rating: Column | int = Column(SmallInteger, nullable=False, index=True)
+    rating_deviation: Column | int = Column(SmallInteger, nullable=False)
+    popularity: Column | int = Column(SmallInteger, nullable=False)
+    nr_plays: Column | int = Column(Integer, nullable=False)
+    themes: Column | list[str] = Column(postgresql.ARRAY(Text), nullable=False, default=[])
+    url: Column | str = Column(String, nullable=False)
+    opening_family: Column | str = Column(String)
+    opening_variation: Column | str = Column(String)
 
     channels = relationship('ChannelPuzzle', cascade='all, delete, delete-orphan, save-update', backref='puzzle')
 
-
-class Prefix(Base):
-    """
-    Tabling containing the custom command prefix for each guild that changed the default
-    """
-    __tablename__ = 'prefixes'
-
-    guild_id: Column = Column(BigInteger, primary_key=True, nullable=False)  # Guild ID of the updated prefix
-    prefix: Column = Column(String(10), nullable=False)  # Command prefix character(s) (default '-')
+    # GIN index on themes
+    __table_args__ = (sa.Index('ix_puzzles_themes', themes, postgresql_using="gin"),)
 
 
 class ChannelPuzzle(Base):
@@ -61,12 +49,21 @@ class ChannelPuzzle(Base):
     """
     __tablename__ = 'channel_puzzles'
 
-    channel_id: Column = Column(String, primary_key=True, nullable=False)  # channel_id in which the puzzle in played
-    puzzle_id: Column = Column(String, ForeignKey('puzzles.puzzle_id'), nullable=False)
+    channel_id: Column | int = Column(BigInteger, primary_key=True, nullable=False)  # channel_id of the active channel
+    puzzle_id: Column | str = Column(String, sa.ForeignKey('puzzles.puzzle_id'), nullable=False, index=True)
     # puzzle: Puzzle object backreferenced from relationship
-    moves: Column = Column(ARRAY(String), nullable=False)  # List of moves left in the puzzle
-    fen: Column = Column(String, nullable=False)  # FEN updated according to the progress
-    message_id: Column = Column(String, nullable=False)  # Message ID referencing the message that triggered the command
+    moves: Column | list[str] = Column(ARRAY(String(4)), nullable=False)  # List of moves left in the puzzle
+    fen: Column | str = Column(String, nullable=False)  # FEN updated according to the progress
+
+
+class APIChallenge(Base):
+    """
+    Lichess API PKCE challenge state
+    """
+    __tablename__ = 'api_challenges'
+
+    discord_id: Column | int = Column(BigInteger, primary_key=True, nullable=False)
+    code_verifier: Column | str = Column(String(64), nullable=False)
 
 
 class User(Base):
@@ -75,18 +72,18 @@ class User(Base):
     """
     __tablename__ = 'users'
 
-    discord_uid: Column = Column(String, primary_key=True, nullable=False, index=True)
-    lichess_username: Column = Column(String(20), nullable=False)
-    puzzle_rating: Column = Column(SmallInteger, nullable=False)
+    discord_id: Column | int = Column(BigInteger, primary_key=True, nullable=False)
+    lichess_username: Column | str = Column(String(20), nullable=False)
+    puzzle_rating: Column | int = Column(SmallInteger, nullable=False)
 
 
 def drop_database():
-    insp = inspect(engine)
+    insp = sa.inspect(engine)
     for table_entry in reversed(insp.get_sorted_table_and_fkc_names()):
         table_name = table_entry[0]
         if table_name:
             with engine.begin() as conn:
-                conn.execute(text('DROP TABLE :t CASCADE'), {'t': AsIs(table_name)})
+                conn.execute(sa.text('DROP TABLE :t CASCADE'), {'t': AsIs(table_name)})
 
 
 def update_puzzles_table():
@@ -102,7 +99,8 @@ def update_puzzles_table():
 
     try:
         with pd.read_csv('/tmp/puzzles.csv', chunksize=10_000,
-                         names=list(PUZZLE_DTYPES.keys())) as reader:
+                         names=['puzzle_id', 'fen', 'moves', 'rating', 'rating_deviation', 'popularity', 'nr_plays',
+                                'themes', 'url', 'opening_family', 'opening_variation']) as reader:
             for df in reader:
                 print('10k')
                 df.moves = df.moves.map(str.split)
@@ -119,7 +117,8 @@ def update_puzzles_table():
                 session.execute(upsert_statement)
                 session.commit()
     finally:
-        os.remove('/tmp/puzzles.csv')
+        if os.path.exists('/tmp/puzzles.csv'):
+            os.remove('/tmp/puzzles.csv')
 
 
 if __name__ == '__main__':
