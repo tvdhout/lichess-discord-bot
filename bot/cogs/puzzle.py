@@ -139,8 +139,7 @@ class PuzzleCog(commands.GroupCog, name='puzzle'):
             return await interaction.response.send_message(f'`rating_from` should be smaller than `rating_to`!')
         await interaction.response.defer()
         with self.client.Session() as session:
-            query = session.query(Puzzle).filter(sqlalchemy.and_(Puzzle.rating >= rating_from,
-                                                                 Puzzle.rating <= rating_to))
+            query = session.query(Puzzle).filter(Puzzle.rating.between(rating_from, rating_to))  # .subquery()
             try:
                 puzzle = query[random.randrange(query.count())]
                 await self.show_puzzle(puzzle, interaction)
@@ -164,8 +163,8 @@ class PuzzleCog(commands.GroupCog, name='puzzle'):
                 puzzle = puzzle_query[random.randrange(puzzle_query.count())]
                 await self.show_puzzle(puzzle, interaction)
             else:  # User has connected their Lichess account, get a puzzle near their puzzle rating
-                puzzle_query = puzzle_query.filter(sqlalchemy.and_(Puzzle.rating > (user.puzzle_rating - 150),
-                                                                   Puzzle.rating < (user.puzzle_rating + 300)))
+                puzzle_query = puzzle_query.filter(Puzzle.rating.between((user.puzzle_rating - 150),
+                                                                         (user.puzzle_rating + 300)))
                 try:
                     puzzle = puzzle_query[random.randrange(puzzle_query.count())]
                     await self.show_puzzle(puzzle, interaction)
