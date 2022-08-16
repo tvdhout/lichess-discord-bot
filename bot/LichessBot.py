@@ -28,6 +28,7 @@ class LichessBot(commands.Bot):
         self.Session = sessionmaker(bind=engine)
 
     async def setup_hook(self):
+        self.logger.info(f"Running setup_hook for {'DEVELOPMENT' if self.development else 'PRODUCTION'}")
         self.__session = ClientSession()
         # Load command cogs
         self.logger.info("Loading command cogs...")
@@ -85,7 +86,7 @@ class LichessBot(commands.Bot):
         formatter = logging.Formatter('[{asctime}] [{levelname}] {name}: {message}', dt_fmt, style='{')
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
-        if self.development:
+        if self.development or sys.argv[-1] == 'DEBUG':
             stream_handler = logging.StreamHandler()
             stream_handler.setFormatter(formatter)
             logger.addHandler(stream_handler)
@@ -96,10 +97,9 @@ if __name__ == '__main__':
     load_dotenv()
     development = sys.argv[-1] == 'DEVELOPMENT'
 
-    intents = discord.Intents.default()
-    # intents.message_content = True
     client: LichessBot = LichessBot(development=development,
                                     command_prefix='%lb',
                                     application_id=os.getenv(f'{"DEV_" if development else ""}DISCORD_APPLICATION_ID'),
-                                    intents=intents)
+                                    intents=discord.Intents.default())
+
     client.run(token=os.getenv('DEV_DISCORD_TOKEN' if client.development else 'DISCORD_TOKEN'), log_handler=None)

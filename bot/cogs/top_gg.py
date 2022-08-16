@@ -1,6 +1,6 @@
 import os
 
-import dbl
+import topgg
 from discord.ext import commands, tasks
 
 from LichessBot import LichessBot
@@ -15,23 +15,23 @@ class TopGG(commands.Cog):
         self.client = client
         self.logger = self.client.logger
         self.token = os.getenv('TOPGG_TOKEN')
-        self.dblpy = dbl.DBLClient(self.client, self.token)
+        self.topgg = topgg.DBLClient(self.client, self.token)
         self.update_stats.start()
 
-    @tasks.loop(hours=4)
+    @tasks.loop(hours=2)
     async def update_stats(self):
         """
         Update server count every 4 hours
         @return:
         """
-        self.logger.debug('Attempting to post server count...')
+        self.logger.info('Attempting to post server count...')
         try:
-            await self.dblpy.post_guild_count()
-            self.logger.debug(f'Posted server count ({self.dblpy.guild_count()})')
+            await self.topgg.post_guild_count()
+            self.logger.info(f'Posted server count ({self.topgg.guild_count})')
         except Exception as e:
             self.logger.exception(f'Failed to post server count\n{type(e).__name__}: {e}')
 
 
-def setup(client: LichessBot):
-    client.add_cog(TopGG(client))
+async def setup(client: LichessBot):
+    await client.add_cog(TopGG(client))
     client.logger.info("Sucessfully added cog: TopGG")
