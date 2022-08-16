@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Success!</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/custom.css') }}">
+</head>
+<body>
+<div>
+    <img src="{{ url_for('static', filename='images/logo-green-render.png') }}"><br/>
+    Lichess username <span class="green">{{ username }}</span> succesfully connected!<br/><br/>
+    <span class="small">You will now get <span class="discord">puzzles</span> near your puzzle rating.</span><br>
+    <span class="small">At any time, you may use the <code>/disconnect</code> command on
+        <span class="discord">discord</span> to disconnect your Lichess account and remove all your data.</span>
+</div>
+</body>
+</html>
