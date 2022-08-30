@@ -21,7 +21,7 @@ class TopGG(commands.Cog):
     @tasks.loop(hours=2)
     async def update_stats(self):
         """
-        Update server count every 4 hours
+        Update server count every 2 hours
         @return:
         """
         self.logger.info('Attempting to post server count...')

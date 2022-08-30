@@ -17,7 +17,7 @@ class Answer(commands.Cog):
 
     @app_commands.command(
         name='answer',
-        description='Give the best move in the current position (requires an active `/puzzle`)',
+        description='Give the best move in the current position (requires an active /puzzle)',
     )
     @app_commands.describe(answer='The best move in this position in SAN or UCI notation')
     async def answer(self, interaction: discord.Interaction, answer: str):

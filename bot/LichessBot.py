@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 from database import engine, Puzzle, ChannelPuzzle
 
 
-class LichessBot(commands.Bot):
+class LichessBot(commands.AutoShardedBot):
     def __init__(self, development: bool, **kwargs):
         super().__init__(**kwargs)
         self.__session: ClientSession | None = None

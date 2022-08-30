@@ -3,6 +3,7 @@ import discord
 import cairosvg
 import random
 
+import requests
 import sqlalchemy
 from discord import app_commands
 from discord.app_commands import Choice
@@ -58,28 +59,34 @@ class PuzzleCog(commands.GroupCog, name='puzzle'):
         embed.add_field(name=f"Answer with `/answer`",
                         value=f"Answer using SAN ({initial_move_san}) or UCI ({initial_move_uci}) notation\n"
                               f"Puzzle difficulty rating: ||**{puzzle.rating}**||")
+
+        perms = interaction.app_permissions
+        channel = interaction.channel
         try:
-            if interaction.channel.type in [discord.ChannelType.text, discord.ChannelType.forum]:
+            if interaction.channel.type in (discord.ChannelType.text, discord.ChannelType.forum):
                 # Create new thread for the puzzle
-                channel = await interaction.channel.create_thread(
-                    name=f"{interaction.user.display_name}'s puzzle",
-                    type=discord.ChannelType.public_thread,
-                    auto_archive_duration=1440,  # After 1 day
-                    reason='New chess puzzle started')
-                await interaction.followup.send(f'I have created a new thread for your puzzle: {channel.mention}',
-                                                ephemeral=True)
+                if perms.create_public_threads and perms.send_messages_in_threads:
+                    channel = await interaction.channel.create_thread(
+                        name=f"{interaction.user.display_name}'s puzzle",
+                        type=discord.ChannelType.public_thread,
+                        auto_archive_duration=1440,  # After 1 day
+                        reason='New chess puzzle started')
+                    await channel.send(file=file, embed=embed, view=HintView())
+                    await interaction.followup.send(f'I have created a new thread for your puzzle: {channel.mention}',
+                                                    ephemeral=True)
+                else:
+                    resp = requests.Response()
+                    resp.status = 403
+                    raise discord.Forbidden(response=resp, message='Not authorized to create a public thread or send '
+                                                                   'messages in threads.')
             else:
-                channel = interaction.channel
-                await interaction.followup.send('Here\'s your puzzle!')
+                await interaction.followup.send('Here\'s your puzzle!',
+                                                file=file, embed=embed, view=HintView())
         except discord.Forbidden:
-            channel = interaction.channel
-            await interaction.followup.send('Here\'s your puzzle!... By the way, if I get the permissions '
-                                            '`Create Public Threads`, `Send Messages in Threads`, '
-                                            'and `Manage Threads` I can create a new thread for each puzzle!')
+            await interaction.followup.send('Here\'s your puzzle!',
+                                            file=file, embed=embed, view=HintView())
 
-        await channel.send(file=file, embed=embed, view=HintView())
-
-        # Add puzzle to channel_puzzles table
+            # Add puzzle to channel_puzzles table
         with self.client.Session() as session:
             channel_puzzle = ChannelPuzzle(channel_id=channel.id,
                                            puzzle_id=puzzle.puzzle_id,
@@ -94,7 +101,7 @@ class PuzzleCog(commands.GroupCog, name='puzzle'):
 
     @app_commands.command(
         name='random',
-        description='Get a random puzzle. Selects one near your rating after `/connect`'
+        description='Get a random puzzle. Selects one near your rating after using /connect'
     )
     async def rand(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -108,12 +115,13 @@ class PuzzleCog(commands.GroupCog, name='puzzle'):
                                                                      Puzzle.rating < (user.puzzle_rating + 200)))
                 try:
                     puzzle = query[random.randrange(query.count())]
-                    await self.show_puzzle(puzzle, interaction)
                 except ValueError:
-                    await interaction.followup.send(f'I cannot find a puzzle with a rating near your puzzle rating '
-                                                    f'({user.puzzle_rating})! Please try `/puzzle rating` instead, or '
-                                                    f'`/disconnect` your lichess account to get completely random '
-                                                    f'puzzles.')
+                    return await interaction.followup.send(
+                        f'I cannot find a puzzle with a rating near your puzzle rating '
+                        f'({user.puzzle_rating})! Please try `/puzzle rating` instead, or '
+                        f'`/disconnect` your lichess account to get completely random '
+                        f'puzzles.')
+                await self.show_puzzle(puzzle, interaction)
 
     @app_commands.command(
         name='id',
@@ -149,7 +157,7 @@ class PuzzleCog(commands.GroupCog, name='puzzle'):
 
     @app_commands.command(
         name='theme',
-        description='Get a random puzzle with a certain theme. Selects one near your rating after `/connect`'
+        description='Get a random puzzle with a certain theme. Selects one near your rating after using /connect'
     )
     @app_commands.describe(theme='The theme of the puzzle',
                            ignore_rating='Ignore your own puzzle rating when getting a puzzle with this theme')
