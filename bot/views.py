@@ -3,12 +3,13 @@ import re
 
 import discord
 from discord.ui import View, Button
-from sqlalchemy.orm import Session
+from sqlalchemy import select, update
+from sqlalchemy.orm import sessionmaker, selectinload
 import chess
 from chess import svg
 from cairosvg import svg2png
 
-from database import engine, ChannelPuzzle
+from database import ChannelPuzzle, WatchedGame
 
 
 class ConnectView(View):
@@ -18,14 +19,50 @@ class ConnectView(View):
         self.add_item(connect_button)
 
 
+class FlipBoardView(View):
+    def __init__(self, sessionmaker: sessionmaker):
+        super().__init__(timeout=7200.0)
+        self.Session = sessionmaker
+
+    @discord.ui.button(label='Flip board', emoji='🔃', style=discord.ButtonStyle.gray)
+    async def flip_board(self, interaction: discord.Interaction, button: Button):
+        async with self.Session() as session:
+            game: WatchedGame = (await session.execute(select(WatchedGame)
+                                                       .filter(WatchedGame.message_id == interaction.message.id)
+                                                       )).scalar()
+            embed = interaction.message.embeds[0]
+            # Gif of past game
+            if game is None:
+                new_color = 'white' not in embed.image.url
+                embed.set_image(url=embed.image.url.replace('white', '???').replace('black', 'white')
+                                .replace('???', 'black'))
+                embed.colour = 0xeeeeee if new_color else 0x000000
+                return await interaction.response.edit_message(embed=embed)
+
+            # Live game
+            if not game.watcher_id == interaction.user.id:
+                return await interaction.response.send_message('Only the person who requested the game may flip '
+                                                               'the board.', ephemeral=True, delete_after=5)
+            game.color = not game.color
+            await interaction.response.send_message('The board will flip at the next move.', ephemeral=True,
+                                                        delete_after=3)
+            await session.execute(update(WatchedGame)
+                                  .where(WatchedGame.message_id == interaction.message.id)
+                                  .values(color=game.color))
+            await session.commit()
+
+
 class UpdateBoardView(View):
-    def __init__(self):
+    def __init__(self, sessionmaker: sessionmaker):
         super().__init__(timeout=3600.0)
+        self.Session = sessionmaker
 
     @discord.ui.button(label='Show updated board', emoji='🧩', style=discord.ButtonStyle.blurple)
     async def show_updated_board(self, interaction: discord.Interaction, button: Button):
-        with Session(bind=engine) as session:
-            c_puzzle = session.query(ChannelPuzzle).filter(ChannelPuzzle.channel_id == interaction.channel_id).first()
+        async with self.Session() as session:
+            c_puzzle = (await session.execute(select(ChannelPuzzle)
+                                              .filter(ChannelPuzzle.channel_id == interaction.channel_id)
+                                              .options(selectinload(ChannelPuzzle.puzzle)))).scalar()
             if c_puzzle is None:
                 button.disabled = True
                 await interaction.response.edit_message(view=self)
@@ -56,21 +93,26 @@ class UpdateBoardView(View):
 
             button.disabled = True
             await interaction.response.edit_message(view=self)
-            await interaction.followup.send(file=puzzle, embed=embed, view=HintView())
+            await interaction.followup.send(file=puzzle, embed=embed, view=HintView(sessionmaker=self.Session))
+
             # Delete board image
             if os.path.exists(f'/tmp/{interaction.channel_id}.png'):
                 os.remove(f'/tmp/{interaction.channel_id}.png')
 
 
 class HintView(View):
-    def __init__(self):
+    pieces = {'R': 'rook', 'N': 'knight', 'B': 'bishop', 'Q': 'queen', 'K': 'king'}
+
+    def __init__(self, sessionmaker: sessionmaker):
         super().__init__(timeout=3600.0)
-        self.pieces = {'R': 'rook', 'N': 'knight', 'B': 'bishop', 'Q': 'queen', 'K': 'king'}
+        self.Session = sessionmaker
 
     @discord.ui.button(label='Get a hint', emoji='❓', style=discord.ButtonStyle.gray)
     async def hint(self, interaction: discord.Interaction, button: Button):
-        with Session(bind=engine) as session:
-            c_puzzle = session.query(ChannelPuzzle).filter(ChannelPuzzle.channel_id == interaction.channel_id).first()
+        async with self.Session() as session:
+            c_puzzle = (await session.execute(select(ChannelPuzzle)
+                                              .filter(ChannelPuzzle.channel_id == interaction.channel_id)
+                                              .options(selectinload(ChannelPuzzle.puzzle)))).scalar()
             if c_puzzle is None:
                 button.disabled = True
                 await interaction.response.edit_message(view=self)
@@ -95,15 +137,17 @@ class HintView(View):
 
 
 class WrongAnswerView(HintView):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, sessionmaker: sessionmaker):
+        super().__init__(sessionmaker=sessionmaker)
+        self.Session = sessionmaker
 
     @discord.ui.button(label='I give up', emoji='🤯', style=discord.ButtonStyle.red)
     async def best_move(self, interaction: discord.Interaction, button: Button):
-        with Session(bind=engine) as session:
-            c_puzzle_query = session.query(ChannelPuzzle).filter(ChannelPuzzle.channel_id == interaction.channel_id)
-            c_puzzle = c_puzzle_query.first()
-            button.disabled = True
+        button.disabled = True
+        async with self.Session() as session:
+            c_puzzle = (await session.execute(select(ChannelPuzzle)
+                                              .filter(ChannelPuzzle.channel_id == interaction.channel_id)
+                                              .options(selectinload(ChannelPuzzle.puzzle)))).scalar()
             await interaction.response.edit_message(view=self)
             if c_puzzle is None:
                 return await interaction.followup.send('There is no active puzzle in this channel! Start a puzzle with '
@@ -120,7 +164,7 @@ class WrongAnswerView(HintView):
                                 value=f'The best move is {correct_san} (or {correct_uci}). You completed the puzzle! '
                                       f'(difficulty rating {c_puzzle.puzzle.rating})')
                 await interaction.followup.send(embed=embed)
-                session.delete(c_puzzle)
+                await session.delete(c_puzzle)
             else:
                 board.push_uci(correct_uci)
                 reply_uci = moves.pop(0)
@@ -132,7 +176,9 @@ class WrongAnswerView(HintView):
                                 value=f'The best move is {correct_san} (or {correct_uci}). The opponent responded with '
                                       f'{reply_san}. Now what\'s the best move?')
 
-                await interaction.followup.send(embed=embed, view=UpdateBoardView())
+                await interaction.followup.send(embed=embed, view=UpdateBoardView(sessionmaker=self.Session))
 
-                c_puzzle_query.update({'moves': moves, 'fen': board.fen()})  # Update channel puzzle with progress
-            session.commit()
+                await session.execute(update(ChannelPuzzle)
+                                      .where(ChannelPuzzle.channel_id == c_puzzle.channel_id)
+                                      .values(moves=moves, fen=board.fen()))
+            await session.commit()

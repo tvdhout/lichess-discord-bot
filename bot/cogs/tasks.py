@@ -6,11 +6,11 @@ from discord.ext import commands, tasks
 from LichessBot import LichessBot
 
 
-class TopGG(commands.Cog):
+class Tasks(commands.Cog):
     """
-    TopGG API Cog:
-    https://top.gg/bot/707287095911120968
+    Tasks Cog
     """
+
     def __init__(self, client: LichessBot):
         self.client = client
         self.logger = self.client.logger
@@ -21,7 +21,7 @@ class TopGG(commands.Cog):
     @tasks.loop(hours=2)
     async def update_stats(self):
         """
-        Update server count every 2 hours
+        Update server count on top.gg every 2 hours
         @return:
         """
         self.logger.info('Attempting to post server count...')
@@ -33,5 +33,5 @@ class TopGG(commands.Cog):
 
 
 async def setup(client: LichessBot):
-    await client.add_cog(TopGG(client))
-    client.logger.info("Sucessfully added cog: TopGG")
+    await client.add_cog(Tasks(client))
+    client.logger.info("Sucessfully added cog: Tasks")
