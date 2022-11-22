@@ -14,7 +14,10 @@
 </a>
 
 ## Lichess puzzles on Discord!
-The Lichess Bot enables you to solve millions of Lichess puzzles in the Discord chat (try the different `/puzzle` commands). You can connect it to your Lichess account to get puzzles near your rating, and look up anyone's Lichess ratings and profile. Interact with the bot exclusively through slash commands.
+The Lichess Bot enables you to solve millions of Lichess puzzles in the Discord chat (try the different `/puzzle` commands). 
+You can connect it to your Lichess account to get puzzles near your rating, and look up anyone's Lichess ratings and profile. 
+
+Interact with the bot exclusively through slash commands.
 
 ## Slash commands 
 * `/about` → show information about the bot
@@ -24,6 +27,7 @@ The Lichess Bot enables you to solve millions of Lichess puzzles in the Discord 
 * `/puzzle id` → show a specific chess puzzle by ID
 * `/puzzle rating` → show a random chess puzzle with a difficulty rating in your specified range
 * `/puzzle theme [ignore_rating]` → show a random chess puzzle with a specific popular theme
+* `/watch` → watch a (live) Lichess game
 * `/answer` → give an answer to the most recent puzzle shown in the channel
 * `/rating [Lichess username]` → show the Lichess ratings of your linked account (or someone else's, with the optional argument)
 * `/profile [Lichess username]` → show the Lichess profile of your linked account (or someone else's, with the optional argument)
