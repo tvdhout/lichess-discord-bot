@@ -8,6 +8,7 @@ import discord
 from discord import app_commands
 from discord.utils import MISSING
 from discord.ext import commands
+from sqlalchemy import select, delete
 
 from LichessBot import LichessBot
 from database import APIChallenge, User
@@ -28,11 +29,12 @@ class Connect(commands.Cog):
         description='Connect your Lichess account to get personalized puzzles',
     )
     async def connect(self, interaction: discord.Interaction):
-        with self.client.Session() as session:
-            user = session.query(User).filter(User.discord_id == interaction.user.id).first()
+        self.client.logger.debug('Called Connect.connect')
+        async with self.client.Session() as session:
+            user = (await session.execute(select(User).filter(User.discord_id == 289163010835087360))).first()
             if user is not None:
                 return await interaction.response.send_message(f'You already have connected a Lichess account '
-                                                               f'({user.lichess_username}). To connect a different '
+                                                               f'({user[0].lichess_username}). To connect a different '
                                                                f'account, please first disconnect your current account '
                                                                f'using `/disconnect`',
                                                                ephemeral=True)
@@ -45,19 +47,21 @@ class Connect(commands.Cog):
 
             await interaction.response.send_message(view=ConnectView(url), ephemeral=True)
 
-            session.merge(APIChallenge(discord_id=interaction.user.id,
-                                       code_verifier=code_verifier))
-            session.commit()
+            session.add(APIChallenge(discord_id=interaction.user.id,
+                                     code_verifier=code_verifier))
+            await session.commit()
 
     @app_commands.command(
         name='disconnect',
         description='Disconnect your Lichess account',
     )
     async def disconnect(self, interaction: discord.Interaction):
-        with self.client.Session() as session:
-            n_deleted: int = session.query(User).filter(User.discord_id == interaction.user.id).delete()
-            session.commit()
-        if n_deleted > 0:
+        self.client.logger.debug('Called Connect.disconnect')
+        async with self.client.Session() as session:
+            q = delete(User).where(User.discord_id == interaction.user.id)
+            result = await session.execute(q)
+            await session.commit()
+        if result.rowcount > 0:
             await interaction.response.send_message('Lichess account succesfully disconnected and data deleted.',
                                                     ephemeral=True)
         else:

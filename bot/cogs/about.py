@@ -18,11 +18,12 @@ class About(commands.Cog):
         description='About this bot',
     )
     async def about(self, interaction: discord.Interaction):
+        self.client.logger.debug('Called About.about')
         try:
             database_site = requests.get('https://database.lichess.org/#puzzles').content.decode('utf-8')
             n_puzzles = re.search(r'<strong>([\d,]+)</strong>', database_site).group(1)
         except (requests.RequestException, AttributeError):
-            n_puzzles = 'about 3 million'
+            n_puzzles = '3 million'
 
         embed = discord.Embed(title='Lichess Discord Bot', color=0xdbd7ca,
                               url="https://github.com/tvdhout/lichess-discord-bot")

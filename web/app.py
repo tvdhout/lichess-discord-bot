@@ -71,7 +71,10 @@ def callback():
             return flask.render_template('error.html')
         content = resp.json()
         username = content['id']
-        puzzle_rating = content['perfs']['puzzle']['rating']
+        try:
+            puzzle_rating = content['perfs']['puzzle']['rating']
+        except KeyError:
+            puzzle_rating = None
 
         session.merge(User(discord_id=state, lichess_username=username, puzzle_rating=puzzle_rating))
         challenge_query.delete()

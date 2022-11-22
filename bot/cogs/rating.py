@@ -3,6 +3,7 @@ import discord
 from discord import app_commands
 from discord.utils import MISSING
 from discord.ext import commands
+from sqlalchemy import select
 
 from LichessBot import LichessBot
 from database import User
@@ -18,15 +19,16 @@ class Rating(commands.Cog):
     )
     @app_commands.describe(lichess_user='Lichess username whose ratings to look up')
     async def rating(self, interaction: discord.Interaction, lichess_user: str = None):
+        self.client.logger.debug('Called Rating.rating')
+        user = None
         if lichess_user is None:
-            with self.client.Session() as session:
-                user = session.query(User).filter(User.discord_id == interaction.user.id).first()
+            async with self.client.Session() as session:
+                user = (await session.execute(select(User).filter(User.discord_id == interaction.user.id))).scalar()
             if user is None:
                 return await interaction.response.send_message('You have not connected a Lichess account. Use `/rating '
                                                                '[lichess_user]` to lookup someone\'s Lichess rating, '
                                                                'or use `/connect` to connect your Lichess account.')
             lichess_user = user.lichess_username
-
         resp = requests.get(f'https://lichess.org/api/user/{lichess_user}')
         if resp.status_code == 404:
             embed = discord.Embed(title=f"Rating", colour=0xcc7474)
@@ -34,6 +36,7 @@ class Rating(commands.Cog):
             return await interaction.response.send_message(embed=embed)
         try:
             resp.raise_for_status()
+
         except requests.HTTPError:
             return await interaction.response.send_message(f'Something went wrong with the Lichess API. If this keeps '
                                                            f'happening, please report it on the support server: '
@@ -62,13 +65,8 @@ class Rating(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
 
-        with self.client.Session() as session:
-            try:
-                session.query(User).filter(User.discord_id == interaction.user.id).update(
-                    {'puzzle_rating': ratings['puzzle']['rating']}, synchronize_session=False)
-                session.commit()
-            except KeyError:  # No puzzle rating
-                pass
+        if user is not None:
+            await self.client.update_user_rating(lichess_username=user.lichess_username)
 
 
 async def setup(client: LichessBot):
