@@ -1,6 +1,7 @@
 import os
 import re
 
+import requests
 import discord
 from discord.ui import View, Button
 from sqlalchemy import select, update
@@ -9,7 +10,7 @@ import chess
 from chess import svg
 from cairosvg import svg2png
 
-from database import ChannelPuzzle, WatchedGame
+from database import ChannelPuzzle, WatchedGame, Game
 
 
 class ConnectView(View):
@@ -17,6 +18,60 @@ class ConnectView(View):
         super().__init__()
         connect_button = Button(label='Click here to connect your Lichess account', emoji='🔗', url=url)
         self.add_item(connect_button)
+
+
+class PlayChallengeView(View):
+    def __init__(self, sessionmaker: sessionmaker):
+        super().__init__(timeout=3600.0)
+        self.Session = sessionmaker
+
+    @discord.ui.button(label='Accept', style=discord.ButtonStyle.green)
+    async def accept_challenge(self, interaction: discord.Interaction, button: Button):
+        embed: discord.Embed = interaction.message.embeds[0]
+        if str(interaction.user) not in repr(embed.footer):
+            return await interaction.response.send_message('This challenge is not meant for you',
+                                                           ephemeral=True, delete_after=3)
+        button.disabled = True
+        await interaction.response.edit_message(view=self)
+        intiator_id = re.findall(r'<@(\d+)>', embed.description)[0]
+
+        try:
+            if interaction.channel.type in (discord.ChannelType.text, discord.ChannelType.forum):  # Create thread
+                perms = interaction.app_permissions
+                if perms.create_public_threads and perms.send_messages_in_threads:
+                    channel = await interaction.channel.create_thread(
+                        name=f"{interaction.user.display_name}'s puzzle",
+                        type=discord.ChannelType.public_thread,
+                        auto_archive_duration=1440,  # After 1 day
+                        reason='New chess puzzle started')
+                else:
+                    resp = requests.Response()
+                    resp.status = 403
+                    raise discord.Forbidden(response=resp, message='Not authorized to create a public thread or send '
+                                                                   'messages in threads.')
+            else:
+                channel = interaction.channel
+        except discord.Forbidden:
+            channel = interaction.channel
+
+
+
+        async with self.Session() as session:
+            await session.add(Game(channel_id=...,
+                                   white_player_id=intiator_id,
+                                   black_player_id=interaction.user.id,
+                                   fen=chess.STARTING_FEN))
+            await session.commit()
+
+    @discord.ui.button(label='Decline', style=discord.ButtonStyle.red)
+    async def decline_challenge(self, interaction: discord.Interaction, button: Button):
+        embed: discord.Embed = interaction.message.embeds[0]
+        if str(interaction.user) not in repr(embed.footer):
+            return await interaction.response.send_message('This challenge is not meant for you',
+                                                           ephemeral=True, delete_after=3)
+        button.disabled = True
+        async with self.Session() as session:
+            ...
 
 
 class FlipBoardView(View):
@@ -45,7 +100,7 @@ class FlipBoardView(View):
                                                                'the board.', ephemeral=True, delete_after=5)
             game.color = not game.color
             await interaction.response.send_message('The board will flip at the next move.', ephemeral=True,
-                                                        delete_after=3)
+                                                    delete_after=3)
             await session.execute(update(WatchedGame)
                                   .where(WatchedGame.message_id == interaction.message.id)
                                   .values(color=game.color))

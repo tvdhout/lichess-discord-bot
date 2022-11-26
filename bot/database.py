@@ -1,12 +1,13 @@
 import asyncio
 import os
 import sys
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 import sqlalchemy as sa
-from sqlalchemy import Column, ARRAY, Integer, SmallInteger, BigInteger, String, Text, Boolean
+from sqlalchemy import Column, ARRAY, Integer, SmallInteger, BigInteger, String, Text, Boolean, DateTime
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.dialects import postgresql
@@ -19,6 +20,21 @@ engine = create_async_engine(f'postgresql+asyncpg://{os.getenv("DATABASE_USER")}
                              f'@{os.getenv("DATABASE_HOST")}'
                              f'/{os.getenv("DATABASE_NAME")}',
                              future=True)
+
+
+class Game(Base):
+    """
+    Table for chess games currently in play on Discord
+    """
+    __tablename__ = 'games'
+
+    channel_id: Column | int = Column(BigInteger, primary_key=True)
+    white_player_id: Column | int = Column(BigInteger, nullable=False)
+    black_player_id: Column | int = Column(BigInteger, nullable=False)
+    fen: Column | str = Column(String(length=90), nullable=False)
+    whites_turn: Column | bool = Column(Boolean, nullable=False, default=True)
+    last_move: Column | str = Column(String(length=4))
+    time_last_move: Column | datetime = Column(DateTime)
 
 
 class Puzzle(Base):

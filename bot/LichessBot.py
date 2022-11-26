@@ -37,7 +37,7 @@ class LichessBot(commands.AutoShardedBot):
         # Load command cogs
         self.logger.info("Loading command cogs...")
         extensions = ['cogs.puzzle', 'cogs.answer', 'cogs.connect', 'cogs.rating', 'cogs.profile', 'cogs.about',
-                      'cogs.watch']
+                      'cogs.watch', 'cogs.play']
         for extension in extensions:
             await client.load_extension(extension)
         if not self.development:
