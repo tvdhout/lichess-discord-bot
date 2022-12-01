@@ -1,6 +1,7 @@
 import os
 import re
 
+import cairosvg
 import requests
 import discord
 from discord.ui import View, Button
@@ -20,27 +21,50 @@ class ConnectView(View):
         self.add_item(connect_button)
 
 
+class GameView(View):
+    def __init__(self, sessionmaker: sessionmaker):
+        super().__init__(timeout=3600.0)
+        self.Session = sessionmaker
+
+    @discord.ui.button(label='Offer draw', style=discord.ButtonStyle.blurple, emoji='🤝')
+    async def offer_draw(self, interaction: discord.Interaction, button: discord.Button):
+        ...  # TODO
+
+    @discord.ui.button(label='Resign', style=discord.ButtonStyle.red, emoji='🏳️')
+    async def offer_draw(self, interaction: discord.Interaction, button: discord.Button):
+        ...  # TODO
+
+
 class PlayChallengeView(View):
     def __init__(self, sessionmaker: sessionmaker):
         super().__init__(timeout=3600.0)
         self.Session = sessionmaker
 
     @discord.ui.button(label='Accept', style=discord.ButtonStyle.green)
-    async def accept_challenge(self, interaction: discord.Interaction, button: Button):
+    async def accept_challenge(self, interaction: discord.Interaction, _):
         embed: discord.Embed = interaction.message.embeds[0]
-        if str(interaction.user) not in repr(embed.footer):
+        if str(interaction.user) not in repr(embed.footer):  # Someone not involved clicks decline: correct & ignore
             return await interaction.response.send_message('This challenge is not meant for you',
                                                            ephemeral=True, delete_after=3)
-        button.disabled = True
-        await interaction.response.edit_message(view=self)
-        intiator_id = re.findall(r'<@(\d+)>', embed.description)[0]
+        match_title = embed.fields[0].name
+        initiator_id = int(re.findall(r'<@(\d+)>', embed.description)[0])
+        invitee_plays_white = str(interaction.user) == re.findall(r'– (.*#\d{4})', embed.fields[0].value)[0]
+        white_player_id, black_player_id = interaction.user.id, initiator_id if invitee_plays_white \
+            else (initiator_id, interaction.user.id)
 
+        embed.title = 'Challenge accepted!'
+        embed.description = f'Starting up a chess game: <@{white_player_id}> vs. <@{black_player_id}>'
+        embed.remove_field(0)
+        embed.remove_footer()
+        await interaction.response.edit_message(content=None, embed=embed, view=None)
+
+        # Create a thread if possible, define "channel" as the channel in which this game is played.
         try:
             if interaction.channel.type in (discord.ChannelType.text, discord.ChannelType.forum):  # Create thread
                 perms = interaction.app_permissions
                 if perms.create_public_threads and perms.send_messages_in_threads:
                     channel = await interaction.channel.create_thread(
-                        name=f"{interaction.user.display_name}'s puzzle",
+                        name=match_title,
                         type=discord.ChannelType.public_thread,
                         auto_archive_duration=1440,  # After 1 day
                         reason='New chess puzzle started')
@@ -54,24 +78,49 @@ class PlayChallengeView(View):
         except discord.Forbidden:
             channel = interaction.channel
 
+        # Start the game board
+        board = chess.Board()
 
+        # Create board image
+        image = chess.svg.board(board, colors={'square light': '#f2d0a2', 'square dark': '#aa7249'})
+        cairosvg.svg2png(bytestring=str(image),
+                         write_to=f'/tmp/{channel.id}_game.png',
+                         parent_width=1000,
+                         parent_height=1000)
+        file = discord.File(f'/tmp/{channel.id}_game.png', filename=f"{channel.id}_game.png")
 
+        # Create embed
+        embed = discord.Embed(title=match_title, colour=0xeeeeee)
+        embed.set_image(url=f'attachment://{channel.id}_game.png')
+        embed.add_field(name=f'White to move',
+                        value=f'<@{white_player_id}>, use `/move` to make your move.')
+
+        await channel.send(f'<@{white_player_id}> vs. <@{black_player_id}>', embed=embed, file=file,
+                           view=GameView(sessionmaker=self.Session))
+
+        # Create the Game object in the database
         async with self.Session() as session:
-            await session.add(Game(channel_id=...,
-                                   white_player_id=intiator_id,
-                                   black_player_id=interaction.user.id,
-                                   fen=chess.STARTING_FEN))
+            session.add(Game(channel_id=channel.id,
+                             white_player_id=white_player_id,
+                             black_player_id=black_player_id,
+                             fen=chess.STARTING_FEN))
             await session.commit()
 
     @discord.ui.button(label='Decline', style=discord.ButtonStyle.red)
-    async def decline_challenge(self, interaction: discord.Interaction, button: Button):
+    async def decline_challenge(self, interaction: discord.Interaction, _):
         embed: discord.Embed = interaction.message.embeds[0]
-        if str(interaction.user) not in repr(embed.footer):
+        if str(interaction.user.id) in embed.description:  # Itiator clicks decline: delete the challenge
+            return await interaction.message.delete()
+        if str(interaction.user) not in repr(embed.footer):  # Someone not involved clicks decline: correct & ignore
             return await interaction.response.send_message('This challenge is not meant for you',
                                                            ephemeral=True, delete_after=3)
-        button.disabled = True
-        async with self.Session() as session:
-            ...
+        intiator_id = int(re.findall(r'<@(\d+)>', embed.description)[0])
+        embed.title = 'Invitation declined'
+        embed.description = f"{interaction.user.mention} declined <@{intiator_id}>'s invitation to play a " \
+                            f"game of chess."
+        embed.remove_field(0)
+        embed.remove_footer()
+        await interaction.response.edit_message(content=None, embed=embed, view=None)
 
 
 class FlipBoardView(View):
@@ -80,7 +129,7 @@ class FlipBoardView(View):
         self.Session = sessionmaker
 
     @discord.ui.button(label='Flip board', emoji='🔃', style=discord.ButtonStyle.gray)
-    async def flip_board(self, interaction: discord.Interaction, button: Button):
+    async def flip_board(self, interaction: discord.Interaction, _):
         async with self.Session() as session:
             game: WatchedGame = (await session.execute(select(WatchedGame)
                                                        .filter(WatchedGame.message_id == interaction.message.id)

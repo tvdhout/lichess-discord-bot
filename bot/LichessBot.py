@@ -18,7 +18,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 from dotenv import load_dotenv
 
-from database import engine, Puzzle, ChannelPuzzle, WatchedGame, User
+from database import engine, Puzzle, ChannelPuzzle, WatchedGame, User, Game
 from logger import CustomFormatter
 
 
@@ -76,8 +76,10 @@ class LichessBot(commands.AutoShardedBot):
     async def on_raw_thread_delete(self, payload: discord.RawThreadDeleteEvent):
         self.logger.debug('Called LichessBot.on_raw_thread_delete')
         async with self.Session() as session:
-            q = delete(ChannelPuzzle).where(ChannelPuzzle.channel_id == payload.thread_id)
-            await session.execute(q)
+            qs = [delete(ChannelPuzzle).where(ChannelPuzzle.channel_id == payload.thread_id),
+                  delete(Game).where(Game.channel_id == payload.thread_id)]
+            for q in qs:
+                await session.execute(q)
             await session.commit()
 
     @async_cached_property
