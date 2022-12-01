@@ -33,8 +33,10 @@ class Answer(commands.Cog):
             ).scalar()
             if c_puzzle is None:
                 return await interaction.response.send_message('There is no active puzzle in this channel! Start a '
-                                                               'puzzle with any of the `/puzzle` commands')
-
+                                                               'puzzle with any of the `/puzzle` commands',
+                                                               ephemeral=True,
+                                                               delete_after=7)
+            await interaction.response.defer()
             moves = c_puzzle.moves
             board = chess.Board(c_puzzle.fen)
             correct_uci = moves.pop(0)
@@ -63,7 +65,7 @@ class Answer(commands.Cog):
                     embed.add_field(name="Correct!", value=f"Yes! The best move was {correct_san} (or {correct_uci}). "
                                                            f"You completed the puzzle! (difficulty rating "
                                                            f"{c_puzzle.puzzle.rating})")
-                    await interaction.response.send_message(embed=embed)
+                    await interaction.followup.send(embed=embed)
                     await session.delete(c_puzzle)
                 else:  # Not the last step of the puzzle
                     board.push_uci(correct_uci)
@@ -75,8 +77,8 @@ class Answer(commands.Cog):
                     embed.add_field(name='Correct!',
                                     value=f'Yes! The best move was {correct_san} (or {correct_uci}). The opponent '
                                           f'responded with {reply_san}. Now what\'s the best move?')
-                    await interaction.response.send_message(embed=embed,
-                                                            view=UpdateBoardView(sessionmaker=self.client.Session))
+                    await interaction.followup.send(embed=embed,
+                                                    view=UpdateBoardView(sessionmaker=self.client.Session))
 
                     await session.execute(update(ChannelPuzzle)
                                           .where(ChannelPuzzle.channel_id == c_puzzle.channel_id)
@@ -86,7 +88,7 @@ class Answer(commands.Cog):
                 embed.add_field(name="Correct!", value=f"Yes! {correct_san} (or {correct_uci}) is checkmate! You "
                                                        f"completed the puzzle! (difficulty rating "
                                                        f"{c_puzzle.puzzle.rating})")
-                await interaction.response.send_message(embed=embed)
+                await interaction.followup.send(embed=embed)
                 await session.delete(c_puzzle)
                 await session.commit()
             else:  # Incorrect
@@ -94,8 +96,8 @@ class Answer(commands.Cog):
                 embed.add_field(name="Wrong!",
                                 value=f"{answer} is not the best move :-( Try again or get a hint!")
 
-                await interaction.response.send_message(embed=embed,
-                                                        view=WrongAnswerView(sessionmaker=self.client.Session))
+                await interaction.followup.send(embed=embed,
+                                                view=WrongAnswerView(sessionmaker=self.client.Session))
 
 
 async def setup(client: LichessBot):
