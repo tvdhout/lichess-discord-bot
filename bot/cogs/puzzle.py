@@ -123,7 +123,7 @@ class PuzzleCog(commands.GroupCog, name='puzzle'):
             # User has connected their Lichess account, get a puzzle near their puzzle rating
             else:
                 q = (select(Puzzle).filter(sqlalchemy.and_(Puzzle.rating > (user.puzzle_rating - 100),
-                                                           Puzzle.rating < (user.puzzle_rating + 200))))
+                                                           Puzzle.rating < (user.puzzle_rating + 100))))
                 count = (await session.execute(select(func.count()).select_from(q.subquery()))).scalar()
                 puzzle = (await session.execute(q.offset(func.floor(func.random() * count)).limit(1))).scalar()
                 # No puzzle found within user's rating.
@@ -134,7 +134,8 @@ class PuzzleCog(commands.GroupCog, name='puzzle'):
                         f'`/disconnect` your lichess account to get completely random '
                         f'puzzles.')
             await self.show_puzzle(puzzle, interaction)
-        await self.client.update_user_rating(user.lichess_username)
+        if user is not None:
+            await self.client.update_user_rating(user.lichess_username)
 
     @app_commands.command(
         name='id',

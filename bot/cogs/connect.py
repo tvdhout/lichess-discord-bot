@@ -31,7 +31,7 @@ class Connect(commands.Cog):
     async def connect(self, interaction: discord.Interaction):
         self.client.logger.debug('Called Connect.connect')
         async with self.client.Session() as session:
-            user = (await session.execute(select(User).filter(User.discord_id == 289163010835087360))).first()
+            user = (await session.execute(select(User).filter(User.discord_id == interaction.user.id))).first()
             if user is not None:
                 return await interaction.response.send_message(f'You already have connected a Lichess account '
                                                                f'({user[0].lichess_username}). To connect a different '
@@ -47,8 +47,8 @@ class Connect(commands.Cog):
 
             await interaction.response.send_message(view=ConnectView(url), ephemeral=True)
 
-            session.add(APIChallenge(discord_id=interaction.user.id,
-                                     code_verifier=code_verifier))
+            await session.merge(APIChallenge(discord_id=interaction.user.id,
+                                             code_verifier=code_verifier))
             await session.commit()
 
     @app_commands.command(

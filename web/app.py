@@ -5,23 +5,24 @@ import flask
 import requests
 from dotenv import load_dotenv
 from flask import Flask, request
-from sqlalchemy import create_engine
+from sqlalchemy import select, delete
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 load_dotenv()
 sys.path.append(os.getenv('BASE_DIR'))
 
 from bot.database import APIChallenge, User
 
-
 app = Flask(__name__)
-app.config['SERVER_NAME'] = 'lichess.' + os.getenv('FQDN')
+app.config['SERVER_NAME'] = os.getenv('FQDN')
 
-engine = create_engine(f'postgresql://{os.getenv("DATABASE_USER")}'
-                       f':{os.getenv("DATABASE_PASSWORD")}'
-                       f'@{os.getenv("DATABASE_HOST")}'
-                       f'/{os.getenv("DATABASE_NAME")}')
-Session = sessionmaker(bind=engine)
+engine = create_async_engine(f'postgresql+asyncpg://{os.getenv("DATABASE_USER")}'
+                             f':{os.getenv("DATABASE_PASSWORD")}'
+                             f'@{os.getenv("DATABASE_HOST")}'
+                             f'/{os.getenv("DATABASE_NAME")}',
+                             future=True)
+Session = sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
 
 
 @app.route('/test')
@@ -30,20 +31,20 @@ def test_page():
 
 
 @app.route('/callback')
-def callback():
+async def callback():
     error = request.args.get('error', type=str)
     code = request.args.get('code', type=str)
     try:
-        state = request.args.get('state', type=int)
+        state = request.args.get('state', type=int)  # TODO insert some randomness in state, next to discord ID
     except ValueError:
         return flask.render_template('error.html')
 
     if error is not None or code is None or state is None:
         return flask.render_template('error.html')
 
-    with Session() as session:
-        challenge_query = session.query(APIChallenge).filter(APIChallenge.discord_id == state)
-        challenge: APIChallenge | None = challenge_query.first()
+    async with Session() as session:
+        challenge: APIChallenge | None = (await session.execute(select(APIChallenge)
+                                                                .filter(APIChallenge.discord_id == state))).scalar()
         if challenge is None:
             return flask.render_template('expired.html')
 
@@ -58,7 +59,7 @@ def callback():
                              })
         try:
             resp.raise_for_status()
-        except requests.HTTPError:
+        except requests.HTTPError as e:
             return flask.render_template('error.html')
         content = resp.json()
 
@@ -76,12 +77,15 @@ def callback():
         except KeyError:
             puzzle_rating = None
 
-        session.merge(User(discord_id=state, lichess_username=username, puzzle_rating=puzzle_rating))
-        challenge_query.delete()
-        session.commit()
+        await session.merge(User(discord_id=state, lichess_username=username, puzzle_rating=puzzle_rating))
+        await session.execute(delete(APIChallenge).filter(APIChallenge.discord_id == state))
+        await session.commit()
 
     return flask.render_template('success.html', username=username)
 
 
 # uWSGI application
 application = app
+
+if __name__ == '__main__':
+    application.run()
