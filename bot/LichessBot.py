@@ -37,7 +37,7 @@ class LichessBot(commands.AutoShardedBot):
         # Load command cogs
         self.logger.info("Loading command cogs...")
         extensions = ['cogs.puzzle', 'cogs.answer', 'cogs.connect', 'cogs.rating', 'cogs.profile', 'cogs.about',
-                      'cogs.watch', 'cogs.play']
+                      'cogs.watch']
         for extension in extensions:
             await client.load_extension(extension)
         if not self.development:
@@ -137,7 +137,7 @@ class LichessBot(commands.AutoShardedBot):
 
 if __name__ == '__main__':
     load_dotenv()
-    development = sys.argv[-1] == 'DEVELOPMENT'
+    development = 'DEVELOPMENT' in sys.argv
 
     client: LichessBot = LichessBot(development=development,
                                     command_prefix='%lb',
