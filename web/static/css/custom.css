@@ -12,6 +12,11 @@ div {
     line-height: 100%
 }
 
+a {
+    color: inherit;
+    text-decoration: underline;
+}
+
 img {
     margin-left: auto;
     margin-right: auto;

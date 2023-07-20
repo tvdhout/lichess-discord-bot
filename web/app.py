@@ -3,8 +3,9 @@ import sys
 
 import flask
 import requests
+from werkzeug.exceptions import HTTPException
 from dotenv import load_dotenv
-from flask import Flask, request
+from flask import Flask, request, redirect, url_for
 from sqlalchemy import select, create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -14,6 +15,7 @@ sys.path.append(os.getenv('BASE_DIR'))
 from bot.database import APIChallenge, User
 
 app = Flask(__name__)
+# app.config['SERVER_NAME'] = '192.168.50.200:5000'
 app.config['SERVER_NAME'] = os.getenv('FQDN')
 
 engine = create_engine(f'postgresql://{os.getenv("DATABASE_USER")}'
@@ -29,6 +31,21 @@ def test_page():
     return flask.render_template('test.html')
 
 
+@app.route('/success')
+def success():
+    return flask.render_template('success.html', username=flask.session.get('username', ""))
+
+
+@app.route('/error')
+def error():
+    return flask.render_template('error.html')
+
+
+@app.route('/expired')
+def expired():
+    return flask.render_template('expired.html')
+
+
 @app.route('/callback')
 async def callback():
     try:
@@ -36,17 +53,17 @@ async def callback():
         code = request.args.get('code', type=str)
         state = request.args.get('state', type=int)  # TODO insert some randomness in state, next to discord ID
     except ValueError:
-        return flask.render_template('error.html')
+        return redirect(url_for('error'))
 
     if error is not None or code is None or state is None:
-        return flask.render_template('error.html')
+        return redirect(url_for('error'))
 
     with Session.begin() as session:
         challenge: APIChallenge | None = (session.scalars(select(APIChallenge)
                                                           .filter(APIChallenge.discord_id == state))
                                           ).first()
         if challenge is None:
-            return flask.render_template('expired.html')
+            return redirect(url_for('expired'))
 
         # Get OAuth token
         body = {
@@ -60,7 +77,7 @@ async def callback():
         try:
             resp.raise_for_status()
         except requests.HTTPError:
-            return flask.render_template('error.html')
+            return redirect(url_for('error'))
         content = resp.json()
 
         # Check connected user data
@@ -69,7 +86,7 @@ async def callback():
         try:
             resp.raise_for_status()
         except requests.HTTPError:
-            return flask.render_template('error.html')
+            return redirect(url_for('error'))
         content = resp.json()
         username = content['id']
         try:
@@ -80,11 +97,19 @@ async def callback():
         session.merge(User(discord_id=state, lichess_username=username, puzzle_rating=puzzle_rating))
         session.delete(challenge)
 
-    return flask.render_template('success.html', username=username)
+    flask.session['username'] = username
+    return redirect(url_for('success'))
+
+
+@app.errorhandler(HTTPException)
+def handle_bad_request(e):
+    return flask.render_template('exceptions.html', code=e.code, description=e.description.split('.')[0])
 
 
 # uWSGI application
 application = app
+app.secret_key = os.getenv('FLASK_SECRET')
+app.config['SESSION_TYPE'] = 'filesystem'
 
 if __name__ == '__main__':
     application.run()

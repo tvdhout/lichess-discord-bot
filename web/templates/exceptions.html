@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <link rel="shortcut icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
-    <title>Test</title>
+    <title>Error {{ code }}</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/custom.css') }}">
 </head>
 <body>
 <div>
-    Ground <span class="green">control</span> to Major <span class="red">Tom</span><br>
-    <span class="small">Commencing countdown <span class="discord">engines</span> on</span>
+    <img src="{{ url_for('static', filename='images/logo-red-render.png') }}"><br/>
+    <span class="red">{{ code }}</span> {{ description }}<br/><br/>
+    <a href="https://discord.gg/KdpvMD72CV">report</a>
 </div>
 </body>
 </html>
