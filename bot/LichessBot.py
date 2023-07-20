@@ -18,7 +18,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
 from dotenv import load_dotenv
 
-from database import engine, Puzzle, ChannelPuzzle, WatchedGame, User, Game
+from database import async_engine, Puzzle, ChannelPuzzle, WatchedGame, User, Game
 from logger import CustomFormatter
 
 
@@ -29,7 +29,7 @@ class LichessBot(commands.AutoShardedBot):
         self.synced = False
         self.development = development
         self.logger = self._set_logger(debug=development)
-        self.Session = sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
+        self.Session = sessionmaker(bind=async_engine, expire_on_commit=False, class_=AsyncSession)
 
     async def setup_hook(self):
         self.logger.info(f"Running setup_hook for {'DEVELOPMENT' if self.development else 'PRODUCTION'}")

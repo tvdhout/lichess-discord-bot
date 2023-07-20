@@ -5,7 +5,7 @@ import flask
 import requests
 from dotenv import load_dotenv
 from flask import Flask, request
-from sqlalchemy import select, delete, create_engine
+from sqlalchemy import select, create_engine
 from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
@@ -41,24 +41,25 @@ async def callback():
     if error is not None or code is None or state is None:
         return flask.render_template('error.html')
 
-    with Session() as session:
-        challenge: APIChallenge | None = (session.execute(select(APIChallenge)
-                                                          .filter(APIChallenge.discord_id == state))).scalar()
+    with Session.begin() as session:
+        challenge: APIChallenge | None = (session.scalars(select(APIChallenge)
+                                                          .filter(APIChallenge.discord_id == state))
+                                          ).first()
         if challenge is None:
             return flask.render_template('expired.html')
 
         # Get OAuth token
-        resp = requests.post(url='https://lichess.org/api/token',
-                             json={
-                                 'grant_type': 'authorization_code',
-                                 'code': code,
-                                 'code_verifier': challenge.code_verifier,
-                                 'redirect_uri': os.getenv('CONNECT_REDIRECT_URI'),
-                                 'client_id': os.getenv('CONNECT_CLIENT_ID')
-                             })
+        body = {
+            'grant_type': 'authorization_code',
+            'code': code,
+            'code_verifier': challenge.code_verifier,
+            'redirect_uri': os.getenv('CONNECT_REDIRECT_URI'),
+            'client_id': os.getenv('CONNECT_CLIENT_ID')
+        }
+        resp = requests.post(url='https://lichess.org/api/token', json=body)
         try:
             resp.raise_for_status()
-        except requests.HTTPError as e:
+        except requests.HTTPError:
             return flask.render_template('error.html')
         content = resp.json()
 
@@ -77,8 +78,7 @@ async def callback():
             puzzle_rating = None
 
         session.merge(User(discord_id=state, lichess_username=username, puzzle_rating=puzzle_rating))
-        session.execute(delete(APIChallenge).filter(APIChallenge.discord_id == state))
-        session.commit()
+        session.delete(challenge)
 
     return flask.render_template('success.html', username=username)
 

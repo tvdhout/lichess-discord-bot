@@ -72,7 +72,7 @@ class Watch(commands.Cog):
             game_id = match.group(1)
         else:
             game_id = url[:8]
-        color: bool = chess.BLACK if 'black' in url else chess.WHITE
+        color: bool = chess.BLACK if '/black' in url else chess.WHITE
         try:
             async with aiohttp.ClientSession(raise_for_status=True) as req:
                 async with req.get(url=f'https://lichess.org/game/export/{game_id}',
@@ -126,9 +126,11 @@ class Watch(commands.Cog):
             embed.add_field(name=black_player_str, value='⏱ _Please wait..._', inline=True)
 
             async with aiohttp.ClientSession() as web:
+                self.client.logger.debug('Listening for updates...')
                 try:
                     async with web.get(f'https://lichess.org/api/stream/game/{game_id}', timeout=3600) as stream:
                         game_state = json.loads(await stream.content.readline())
+                        self.client.logger.debug(game_state)
                         board = chess.Board(game_state['fen'])
                         latest_fen = ' '.join(game_state['fen'].split()[:2])
                         lastmove_uci = game_state.get('lastMove', None)
