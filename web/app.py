@@ -15,7 +15,6 @@ sys.path.append(os.getenv('BASE_DIR'))
 from bot.database import APIChallenge, User
 
 app = Flask(__name__)
-# app.config['SERVER_NAME'] = '192.168.50.200:5000'
 app.config['SERVER_NAME'] = os.getenv('FQDN')
 
 engine = create_engine(f'postgresql://{os.getenv("DATABASE_USER")}'
@@ -33,7 +32,10 @@ def test_page():
 
 @app.route('/success')
 def success():
-    return flask.render_template('success.html', username=flask.session.get('username', ""))
+    username = flask.session.get('username', None)
+    if username is None:
+        return flask.render_template('exceptions.html', code=400, description="You shouldn't be here 👀"), 400
+    return flask.render_template('success.html', username=username)
 
 
 @app.route('/error')
@@ -112,4 +114,5 @@ app.secret_key = os.getenv('FLASK_SECRET')
 app.config['SESSION_TYPE'] = 'filesystem'
 
 if __name__ == '__main__':
+    app.config['SERVER_NAME'] = '192.168.50.200:5000'  # Development server
     application.run()

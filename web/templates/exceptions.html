@@ -9,7 +9,7 @@
 <body>
 <div>
     <img src="{{ url_for('static', filename='images/logo-red-render.png') }}"><br/>
-    <span class="red">{{ code }}</span> {{ description }}<br/><br/>
+    <span class="red"><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/{{ code }}" style="text-decoration: none;">{{ code }}</a></span> {{ description }}<br/><br/>
     <a href="https://discord.gg/KdpvMD72CV">report</a>
 </div>
 </body>
