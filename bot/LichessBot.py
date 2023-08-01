@@ -42,6 +42,8 @@ class LichessBot(commands.AutoShardedBot):
             await client.load_extension(extension)
         if not self.development:
             await client.load_extension('cogs.tasks')
+        else:
+            await client.load_extension('cogs.play')
         self.logger.info("Finished loading extension cogs")
 
         if not self.synced:
@@ -80,7 +82,6 @@ class LichessBot(commands.AutoShardedBot):
                   delete(Game).where(Game.channel_id == payload.thread_id)]
             for q in qs:
                 await session.execute(q)
-            await session.commit()
 
     @async_cached_property
     async def total_nr_puzzles(self) -> int:
@@ -139,9 +140,9 @@ if __name__ == '__main__':
     load_dotenv()
     development = 'DEVELOPMENT' in sys.argv
 
-    client: LichessBot = LichessBot(development=development,
-                                    command_prefix='%lb',
-                                    application_id=os.getenv(f'{"DEV_" if development else ""}DISCORD_APPLICATION_ID'),
-                                    intents=discord.Intents.default())
+    client = LichessBot(development=development,
+                        command_prefix='%lb',
+                        application_id=os.getenv(f'{"DEV_" if development else ""}DISCORD_APPLICATION_ID'),
+                        intents=discord.Intents.default())
 
     client.run(token=os.getenv('DEV_DISCORD_TOKEN' if client.development else 'DISCORD_TOKEN'), log_handler=None)

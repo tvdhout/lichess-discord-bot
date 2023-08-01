@@ -1,5 +1,6 @@
 import os
 import re
+import random
 
 import cairosvg
 import requests
@@ -31,7 +32,7 @@ class GameView(View):
         ...  # TODO
 
     @discord.ui.button(label='Resign', style=discord.ButtonStyle.red, emoji='🏳️')
-    async def offer_draw(self, interaction: discord.Interaction, button: discord.Button):
+    async def resign(self, interaction: discord.Interaction, button: discord.Button):
         ...  # TODO
 
 
@@ -43,13 +44,14 @@ class PlayChallengeView(View):
     @discord.ui.button(label='Accept', style=discord.ButtonStyle.green)
     async def accept_challenge(self, interaction: discord.Interaction, _):
         embed: discord.Embed = interaction.message.embeds[0]
-        if str(interaction.user) not in repr(embed.footer):  # Someone not involved clicks decline: correct & ignore
+        if f'Only {str(interaction.user)} can' not in repr(embed.footer):  # Someone not involved clicks accept
             return await interaction.response.send_message('This challenge is not meant for you',
                                                            ephemeral=True, delete_after=3)
         match_title = embed.fields[0].name
         initiator_id = int(re.findall(r'<@(\d+)>', embed.description)[0])
-        invitee_plays_white = str(interaction.user) == re.findall(r'– (.*#\d{4})', embed.fields[0].value)[0]
-        white_player_id, black_player_id = interaction.user.id, initiator_id if invitee_plays_white \
+        invitee_plays_white = ("Your color is white" in embed.fields[0].value or
+                               ("decided randomly" in embed.fields[0].value and random.choice([True, False])))
+        white_player_id, black_player_id = (interaction.user.id, initiator_id) if invitee_plays_white \
             else (initiator_id, interaction.user.id)
 
         embed.title = 'Challenge accepted!'
@@ -103,8 +105,13 @@ class PlayChallengeView(View):
             session.add(Game(channel_id=channel.id,
                              white_player_id=white_player_id,
                              black_player_id=black_player_id,
-                             fen=chess.STARTING_FEN))
+                             fen=chess.STARTING_FEN,
+                             last_move=None,
+                             time_last_move=None))
             await session.commit()
+
+        if os.path.exists(f'/tmp/{interaction.channel_id}_game.png'):
+            os.remove(f'/tmp/{interaction.channel_id}_game.png')
 
     @discord.ui.button(label='Decline', style=discord.ButtonStyle.red)
     async def decline_challenge(self, interaction: discord.Interaction, _):

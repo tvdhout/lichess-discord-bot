@@ -3,8 +3,7 @@ import os
 import cairosvg
 import requests
 import sqlalchemy
-from sqlalchemy.future import select
-from sqlalchemy import func
+from sqlalchemy import select, func
 import discord
 from discord import app_commands
 from discord.app_commands import Choice
@@ -66,8 +65,10 @@ class PuzzleCog(commands.GroupCog, name='puzzle'):
         channel = interaction.channel
         try:
             if interaction.channel.type in (discord.ChannelType.text, discord.ChannelType.forum):
+                self.client.logger.debug('interaction.channel.type in (discord.ChannelType.text, discord.ChannelType.forum)')
                 # Create new thread for the puzzle
                 if perms.create_public_threads and perms.send_messages_in_threads:
+                    self.client.logger.debug('perms.create_public_threads and perms.send_messages_in_threads')
                     channel = await interaction.channel.create_thread(
                         name=f"{interaction.user.display_name}'s puzzle",
                         type=discord.ChannelType.public_thread,
@@ -77,11 +78,16 @@ class PuzzleCog(commands.GroupCog, name='puzzle'):
                     await interaction.followup.send(f'I have created a new thread for your puzzle: {channel.mention}',
                                                     ephemeral=True)
                 else:
+                    self.client.logger.debug('ELSE!!!')
                     resp = requests.Response()
                     resp.status = 403
-                    raise discord.Forbidden(response=resp, message='Not authorized to create a public thread or send '
-                                                                   'messages in threads.')
+                    await interaction.user.send("Hi! I don't have the permissions to create a public thread or send "
+                                                "messages in threads where you just asked for a puzzle. Please inform "
+                                                "the server moderators.")
+                    # raise discord.Forbidden(response=resp, message='Not authorized to create a public thread or send '
+                    #                                                'messages in threads.')
             else:
+                self.client.logger.debug('Else in channel')
                 await interaction.followup.send('Here\'s your puzzle!',
                                                 file=file, embed=embed, view=HintView(sessionmaker=self.client.Session))
         except discord.Forbidden:
@@ -110,9 +116,8 @@ class PuzzleCog(commands.GroupCog, name='puzzle'):
         self.client.logger.debug('Called Puzzle.rand')
         await interaction.response.defer()
         async with self.client.Session() as session:
-            q = select(User).filter(User.discord_id == interaction.user.id)
             try:
-                user = (await session.execute(q)).scalar()
+                user = (await session.execute(select(User).filter(User.discord_id == interaction.user.id))).scalar()
                 assert user is not None and user.puzzle_rating is not None
             # User has not connected their Lichess account or has no puzzle rating, get a random puzzle
             except AssertionError:
@@ -161,7 +166,8 @@ class PuzzleCog(commands.GroupCog, name='puzzle'):
     async def rating(self, interaction: discord.Interaction, rating_from: int, rating_to: int):
         self.client.logger.debug('Called Puzzle.rating')
         if rating_from > rating_to:
-            return await interaction.response.send_message(f'`rating_from` should be smaller than `rating_to`!')
+            return await interaction.response.send_message(f'`rating_from` should be smaller than `rating_to`!', 
+                                                           ephemeral=True)
         await interaction.response.defer()
         async with self.client.Session() as session:
             q = select(Puzzle).filter(sqlalchemy.and_(Puzzle.rating > rating_from, Puzzle.rating < rating_to))

@@ -16,7 +16,12 @@ class Tasks(commands.Cog):
         self.logger = self.client.logger
         self.token = os.getenv('TOPGG_TOKEN')
         self.topgg = topgg.DBLClient(self.client, self.token)
+        self.invalidate_nr_puzzles_cache.start()
         self.update_stats.start()
+
+    @tasks.loop(hours=24)
+    async def invalidate_nr_puzzles_cache(self):
+        del self.client.total_nr_puzzles
 
     @tasks.loop(hours=2)
     async def update_stats(self):

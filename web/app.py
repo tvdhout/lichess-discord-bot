@@ -53,7 +53,7 @@ async def callback():
     try:
         error = request.args.get('error', type=str)
         code = request.args.get('code', type=str)
-        state = request.args.get('state', type=int)  # TODO insert some randomness in state, next to discord ID
+        state = request.args.get('state', type=int)
     except ValueError:
         return redirect(url_for('error'))
 
