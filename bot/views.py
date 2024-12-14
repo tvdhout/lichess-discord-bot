@@ -45,17 +45,23 @@ class PlayChallengeView(View):
     async def accept_challenge(self, interaction: discord.Interaction, _):
         embed: discord.Embed = interaction.message.embeds[0]
         if f'Only {str(interaction.user)} can' not in repr(embed.footer):  # Someone not involved clicks accept
-            return await interaction.response.send_message('This challenge is not meant for you',
+            return await interaction.response.send_message('This invitation is not meant for you',
                                                            ephemeral=True, delete_after=3)
         match_title = embed.fields[0].name
         initiator_id = int(re.findall(r'<@(\d+)>', embed.description)[0])
         invitee_plays_white = ("Your color is white" in embed.fields[0].value or
                                ("decided randomly" in embed.fields[0].value and random.choice([True, False])))
+        try:
+            time, increment = re.search(r'Time control: (\d+)m \+ (\d+)s', embed.fields[0].value).groups()
+            time, increment = int(time) * 60, int(increment)
+        except AttributeError:
+            time, increment = None, None
         white_player_id, black_player_id = (interaction.user.id, initiator_id) if invitee_plays_white \
             else (initiator_id, interaction.user.id)
 
         embed.title = 'Challenge accepted!'
-        embed.description = f'Starting up a chess game: <@{white_player_id}> vs. <@{black_player_id}>'
+        embed.description = (f'Starting a chess game: <@{white_player_id}> vs. <@{black_player_id}>\n'
+                             f'{"No time limit." if time is None else str(time // 60) + "+" + str(increment)}')
         embed.remove_field(0)
         embed.remove_footer()
         await interaction.response.edit_message(content=None, embed=embed, view=None)
@@ -65,11 +71,11 @@ class PlayChallengeView(View):
             if interaction.channel.type in (discord.ChannelType.text, discord.ChannelType.forum):  # Create thread
                 perms = interaction.app_permissions
                 if perms.create_public_threads and perms.send_messages_in_threads:
-                    channel = await interaction.channel.create_thread(
+                     channel = await interaction.channel.create_thread(
                         name=match_title,
                         type=discord.ChannelType.public_thread,
                         auto_archive_duration=1440,  # After 1 day
-                        reason='New chess puzzle started')
+                        reason='New chess game started')
                 else:
                     resp = requests.Response()
                     resp.status = 403
@@ -97,7 +103,7 @@ class PlayChallengeView(View):
         embed.add_field(name=f'White to move',
                         value=f'<@{white_player_id}>, use `/move` to make your move.')
 
-        await channel.send(f'<@{white_player_id}> vs. <@{black_player_id}>', embed=embed, file=file,
+        await channel.send(embed=embed, file=file,
                            view=GameView(sessionmaker=self.Session))
 
         # Create the Game object in the database
@@ -107,7 +113,10 @@ class PlayChallengeView(View):
                              black_player_id=black_player_id,
                              fen=chess.STARTING_FEN,
                              last_move=None,
-                             time_last_move=None))
+                             time_last_move=None,
+                             white_seconds=time,
+                             black_seconds=time,
+                             increment=increment))
             await session.commit()
 
         if os.path.exists(f'/tmp/{interaction.channel_id}_game.png'):
@@ -116,7 +125,7 @@ class PlayChallengeView(View):
     @discord.ui.button(label='Decline', style=discord.ButtonStyle.red)
     async def decline_challenge(self, interaction: discord.Interaction, _):
         embed: discord.Embed = interaction.message.embeds[0]
-        if str(interaction.user.id) in embed.description:  # Itiator clicks decline: delete the challenge
+        if str(interaction.user.id) in embed.description:  # Initiator clicks decline: delete the challenge
             return await interaction.message.delete()
         if str(interaction.user) not in repr(embed.footer):  # Someone not involved clicks decline: correct & ignore
             return await interaction.response.send_message('This challenge is not meant for you',

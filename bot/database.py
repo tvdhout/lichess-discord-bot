@@ -45,9 +45,12 @@ class Game(Base):
     white_player_id: Mapped[int] = mapped_column(BigInteger)
     black_player_id: Mapped[int] = mapped_column(BigInteger)
     fen: Mapped[str] = mapped_column(String(length=90))
+    moves: Mapped[chessmoves]
     last_move: Mapped[Optional[str]] = mapped_column(String(length=4))
     time_last_move: Mapped[Optional[datetime]]
-    whites_turn: Mapped[bool] = mapped_column(default=True)
+    white_seconds: Mapped[Optional[int]]
+    black_seconds: Mapped[Optional[int]]
+    increment: Mapped[Optional[int]]
 
 
 class Puzzle(Base):

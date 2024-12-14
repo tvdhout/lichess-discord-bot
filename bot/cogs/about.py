@@ -27,7 +27,7 @@ class About(commands.Cog):
 
         embed = discord.Embed(title='Lichess Discord Bot', color=0xdbd7ca,
                               url="https://github.com/tvdhout/lichess-discord-bot")
-        embed.set_footer(text="Made by Thijs#9356",
+        embed.set_footer(text="Made by tvdh",
                          icon_url="https://cdn.discordapp.com/avatars/289163010835087360/"
                                   "f54134557a6e3097fe3ffb8f6ba0cb8c.webp?size=128")
         embed.add_field(name='🤖 About this bot', value=f'The Lichess Bot enables you to solve Lichess\' {n_puzzles} '

@@ -15,7 +15,7 @@ chess==1.9.4
 click==8.1.6
 cssselect2==0.7.0
 defusedxml==0.7.1
-discord.py==2.3.1
+discord.py
 Flask==2.3.2
 frozenlist==1.4.0
 greenlet==2.0.2
